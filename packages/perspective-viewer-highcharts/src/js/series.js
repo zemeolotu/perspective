@@ -8,6 +8,7 @@
  */
 
 import {COLUMN_SEPARATOR_STRING} from "@jpmorganchase/perspective/src/js/defaults.js";
+import { textChangeRangeIsUnchanged } from "typescript";
 
 function row_to_series(series, sname, gname) {
     let s;
@@ -34,12 +35,11 @@ function row_to_series(series, sname, gname) {
     return s;
 }
 
-/*unction column_to_series(series, sname, gname) {
-    // TODO: prevent unmapped-to-pivot values from showing, empty __ROW_PATH__ should not show
+function column_to_series(data, sname, gname) {
     let s = {
         name: sname,
         connectNulls: true,
-        data: series.map(val => val === undefined || val === "" ? null : val)
+        data: data.map(val => (val === undefined || val === "" ? null : val))
     };
 
     if (gname) {
@@ -47,7 +47,7 @@ function row_to_series(series, sname, gname) {
     }
 
     return s;
-}*/
+}
 
 // preserve for backwards compatibility
 class TreeAxisIterator {
@@ -150,15 +150,14 @@ class RowIterator {
 
 // new columnar parsing
 class ColumnToRowIterator {
-
-    // TODO: write a column parser that does not rely on conversion to row
+    
     constructor(columns, hidden, pivot_length) {
         this.columns = columns;
         this.hidden = [...hidden, "hidden", "column_names"];
         this.column_names = Object.keys(this.columns).filter(prop => {
                     let cname = prop.split(COLUMN_SEPARATOR_STRING);
                     cname = cname[cname.length - 1];
-                    return prop !== "__ROW_PATH__" && this.hidden.indexOf(cname) === -1;
+                    return prop !== "__ROW_PATH__" && !this.hidden.includes(cname);
                 });
         this.is_stacked = this.column_names.map(value =>
             value.substr(value.lastIndexOf(COLUMN_SEPARATOR_STRING) + 1, value.length)
@@ -178,11 +177,23 @@ class ColumnToRowIterator {
                 if (this.columns.__ROW_PATH__[i].length !== this.pivot_length) continue;
             }
             for (let name of this.column_names) {
-                if (!this.hidden.includes(name) && name !== "__ROW_PATH__") {
-                    row[name] = this.columns[name][i];
-                }
+                row[name] = this.columns[name][i];
             }
             yield row;
+        }
+    }
+}
+
+// columnar without row conversion
+class ColumarIterator extends ColumnToRowIterator {
+    *[Symbol.iterator]() {
+        for (let name of this.column_names) {
+            let data = this.columns[name];
+            if (this.columns.__ROW_PATH__) {
+                data = data.filter((val, idx) =>
+                    this.columns.__ROW_PATH__[idx].length === this.pivot_length);
+            }
+            yield {name, data};
         }
     }
 }
@@ -206,6 +217,25 @@ export function make_y_data(cols, pivots, hidden) {
             s.data.push(val);
         }
     }
+    return [series, axis.top];
+}
+
+export function make_y_columnar_data(cols, pivots, hidden) {
+    let series = [];
+    let axis = new ColumnarAxisIterator(pivots.length, cols);
+    let columns = new ColumarIterator(cols, hidden, pivots.length);
+    for (let col of columns) {
+        let sname = col.name.split(COLUMN_SEPARATOR_STRING);
+        let gname = sname[sname.length - 1];
+        if (columns.is_stacked) {
+            sname = sname.join(", ") || gname;
+        } else {
+            sname = sname.slice(0, sname.length - 1).join(", ") || " ";
+        }
+        let s = column_to_series(col.data, sname, gname);
+        series.push(s);
+    }
+    
     return [series, axis.top];
 }
 
