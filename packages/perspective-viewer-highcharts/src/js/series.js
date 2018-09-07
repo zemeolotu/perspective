@@ -8,7 +8,6 @@
  */
 
 import {COLUMN_SEPARATOR_STRING} from "@jpmorganchase/perspective/src/js/defaults.js";
-import { textChangeRangeIsUnchanged } from "typescript";
 
 function row_to_series(series, sname, gname) {
     let s;
@@ -16,7 +15,6 @@ function row_to_series(series, sname, gname) {
     for (sidx; sidx < series.length; sidx++) {
         let is_group = typeof gname === "undefined" || series[sidx].stack === gname;
         if (series[sidx].name == sname && is_group) {
-            //console.log(series[sidx], sidx, series);
             s = series[sidx];
             break;
         }
@@ -49,7 +47,7 @@ function column_to_series(data, sname, gname) {
     return s;
 }
 
-// preserve for backwards compatibility
+// Row-based axis generator
 class TreeAxisIterator {
 
     constructor(depth, json) {
@@ -80,6 +78,7 @@ class TreeAxisIterator {
     }
 
     *[Symbol.iterator]() {
+        // Recursively map and generate axis labels
         let label = this.top;
         for (let row of this.json) {
             let path = row.__ROW_PATH__ || [''];
@@ -93,7 +92,7 @@ class TreeAxisIterator {
     }
 }
 
-// new columnar parsing
+// Column-based axis generator
 class ColumnarAxisIterator extends TreeAxisIterator {
 
     constructor(depth, columns) {
@@ -102,7 +101,7 @@ class ColumnarAxisIterator extends TreeAxisIterator {
         this.fill_axis();
     }
 
-    // recursively generate axis categories from column
+    // No need for custom iterator - call on instantiation
     fill_axis() {
         let label = this.top;
 
@@ -121,7 +120,6 @@ class ColumnarAxisIterator extends TreeAxisIterator {
     }
 }
 
-// preserve for backwards-compatibility
 class RowIterator {
 
     constructor(rows, hidden) {
@@ -148,9 +146,8 @@ class RowIterator {
     }
 }
 
-// new columnar parsing
-class ColumnToRowIterator {
-    
+class ColumnarIterator {
+
     constructor(columns, hidden, pivot_length) {
         this.columns = columns;
         this.hidden = [...hidden, "hidden", "column_names"];
@@ -168,27 +165,9 @@ class ColumnToRowIterator {
     }
 
     *[Symbol.iterator]() {
-        // convert columnar data to row
-        let i = 0;
-        for (i; i < this.columns[this.column_names[0]].length; i++) {
-            let row = {};
-            // TODO: fix the total row problem at source
-            if (this.columns.__ROW_PATH__) {
-                if (this.columns.__ROW_PATH__[i].length !== this.pivot_length) continue;
-            }
-            for (let name of this.column_names) {
-                row[name] = this.columns[name][i];
-            }
-            yield row;
-        }
-    }
-}
-
-// columnar without row conversion
-class ColumarIterator extends ColumnToRowIterator {
-    *[Symbol.iterator]() {
         for (let name of this.column_names) {
             let data = this.columns[name];
+            // Manually remove total columns, remove once fix is complete on engine
             if (this.columns.__ROW_PATH__) {
                 data = data.filter((val, idx) =>
                     this.columns.__ROW_PATH__[idx].length === this.pivot_length);
@@ -201,29 +180,7 @@ class ColumarIterator extends ColumnToRowIterator {
 export function make_y_data(cols, pivots, hidden) {
     let series = [];
     let axis = new ColumnarAxisIterator(pivots.length, cols);
-    let row_data = new ColumnToRowIterator(cols, hidden, pivots.length);
-    for (let row of row_data) {
-        for (let name of Object.keys(row)) {
-            let sname = name.split(COLUMN_SEPARATOR_STRING);
-            let gname = sname[sname.length - 1];
-            if (row_data.is_stacked) {
-                sname = sname.join(", ") || gname;
-            } else {
-                sname = sname.slice(0, sname.length - 1).join(", ") || " ";
-            }
-            let s = row_to_series(series, sname, gname);
-            let val = row[name];
-            val = (val === undefined || val === "" ? null : val)
-            s.data.push(val);
-        }
-    }
-    return [series, axis.top];
-}
-
-export function make_y_columnar_data(cols, pivots, hidden) {
-    let series = [];
-    let axis = new ColumnarAxisIterator(pivots.length, cols);
-    let columns = new ColumarIterator(cols, hidden, pivots.length);
+    let columns = new ColumnarIterator(cols, hidden, pivots.length);
     for (let col of columns) {
         let sname = col.name.split(COLUMN_SEPARATOR_STRING);
         let gname = sname[sname.length - 1];
@@ -239,7 +196,7 @@ export function make_y_columnar_data(cols, pivots, hidden) {
     return [series, axis.top];
 }
 
-// preserve old behavior for heatmaps
+// Preserve old behavior for heatmaps
 export function make_y_heatmap_data(js, pivots, hidden) {
     let rows = new TreeAxisIterator(pivots.length, js);
     let rows2 = new RowIterator(rows, hidden);

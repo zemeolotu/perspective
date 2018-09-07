@@ -13,7 +13,7 @@ import "../less/highcharts.less";
 
 import {COLORS_10, COLORS_20} from "./externals.js";
 import {color_axis} from "./color_axis.js";
-import {make_tree_data, make_y_data, make_y_columnar_data, make_xy_data, make_xyz_data} from "./series.js";
+import {make_tree_data, make_y_data, make_xy_data, make_xyz_data} from "./series.js";
 import {set_boost, set_axis, set_category_axis, set_both_axis, default_config, set_tick_size} from "./config.js";
 
 export const draw = (mode) => async function (el, view, task) {
@@ -122,7 +122,7 @@ export const draw = (mode) => async function (el, view, task) {
         set_both_axis(config, 'yAxis', yaxis_name, yaxis_type, yaxis_type, ytop);
     } else {
         let config = configs[0] = default_config.call(this, aggregates, mode, js, col_pivots);
-        let [series, top, ] = make_y_columnar_data(cols, row_pivots, hidden);
+        let [series, top, ] = make_y_data(cols, row_pivots, hidden);
         config.series = series;
         config.colors = series.length <= 10 ? COLORS_10 : COLORS_20;        
         config.legend.enabled = col_pivots.length > 0 || series.length > 1;
