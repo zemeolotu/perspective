@@ -84,6 +84,7 @@ const siteConfig = {
   // Add custom scripts here that would be placed in <script> tags
   scripts: [
     'https://buttons.github.io/buttons.js', 
+    'https://unpkg.com/@jpmorganchase/perspective/build/perspective.js',
     'https://unpkg.com/@jpmorganchase/perspective-viewer/build/perspective.view.js',
     'https://unpkg.com/@jpmorganchase/perspective-viewer-hypergrid/build/hypergrid.plugin.js',
     'https://unpkg.com/@jpmorganchase/perspective-viewer-highcharts/build/highcharts.plugin.js',
@@ -91,8 +92,9 @@ const siteConfig = {
   ],
 
   stylesheets: [
-    'https://unpkg.com/@jpmorganchase/perspective-examples/build/material.dark.css',
-    'https://fonts.googleapis.com/css?family=Montserrat:300'
+    'https://unpkg.com/@jpmorganchase/perspective-examples/build/material.css',
+    'https://fonts.googleapis.com/css?family=Montserrat:300',
+    'css/material.dark.css'
   ],
 
   /* On page navigation for the current documentation page */

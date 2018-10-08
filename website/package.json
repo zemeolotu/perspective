@@ -1,9 +1,10 @@
 {
     "scripts": {
+        "theme": "lessc static/css/material.dark.less > static/css/material.dark.css",
         "examples": "docusaurus-examples",
-        "start": "docusaurus-start",
-        "build": "docusaurus-build",
-        "publish-gh-pages": "docusaurus-publish",
+        "start": "npm run theme && docusaurus-start",
+        "build": "npm run theme && docusaurus-build",
+        "publish-gh-pages": "npm run theme && docusaurus-publish",
         "write-translations": "docusaurus-write-translations",
         "version": "docusaurus-version",
         "rename-version": "docusaurus-rename-version"
