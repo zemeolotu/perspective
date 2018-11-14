@@ -1,6 +1,6 @@
 {
   "docs": {
-    "Getting Started": ["installation", "usage"],
+    "Getting Started": ["installation", "usage", "development"],
     "API": ["perspective", "perspective-viewer"]
   },
   "docs-other": {
