@@ -489,6 +489,26 @@ module.exports = perspective => {
             table.delete();
         });
 
+        it("Correctly infers a mix of raw and string-wrapped ints", async function() {
+            const mix = {a: [1, "2", 3, "4", 5]};
+            var table = perspective.table(mix);
+            var view = table.view();
+            let cols = await view.to_columns();
+            expect(cols).toEqual({a: [1, 2, 3, 4, 5]});
+            view.delete();
+            table.delete();
+        });
+
+        it("Correctly infers a mix of raw and string-wrapped floats", async function() {
+            const mix = {a: [1.5, "2.25", 3.5, "4.25", 5.5]};
+            var table = perspective.table(mix);
+            var view = table.view();
+            let cols = await view.to_columns();
+            expect(cols).toEqual({a: [1.5, 2.25, 3.5, 4.25, 5.5]});
+            view.delete();
+            table.delete();
+        });
+
         it("Infers correct type for empty string columns", async function() {
             var table = perspective.table([{x: "", y: 1}, {x: "", y: 2}, {x: "", y: 3}, {x: "", y: 4}]);
             var view = table.view();
@@ -535,6 +555,34 @@ module.exports = perspective => {
             var data = await view.to_json();
             expect(data).toEqual(int_to_float);
 
+            view.delete();
+            table.delete();
+        });
+
+        it("Downcasts invalid int columns to string", async function() {
+            const invalid_int = {a: [1, 2, 3, 4, "abc"]};
+            var table = perspective.table(invalid_int);
+            var view = table.view();
+
+            let result = await view.schema();
+            expect(result).toEqual({a: "string"});
+
+            let cols = await view.to_columns();
+            expect(cols).toEqual({a: ["1", "2", "3", "4", "abc"]});
+            view.delete();
+            table.delete();
+        });
+
+        it("Downcasts invalid float columns to string", async function() {
+            const invalid_int = {a: [1.5, 2.5, 3.5, 4.5, "abc"]};
+            var table = perspective.table(invalid_int);
+            var view = table.view();
+
+            let result = await view.schema();
+            expect(result).toEqual({a: "string"});
+
+            let cols = await view.to_columns();
+            expect(cols).toEqual({a: ["1.5", "2.5", "3.5", "4.5", "abc"]});
             view.delete();
             table.delete();
         });

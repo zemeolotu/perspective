@@ -574,6 +574,37 @@ t_table::promote_column(const std::string& name, t_dtype new_dtype, std::int32_t
 }
 
 void
+t_table::downcast_column(const std::string& name, std::int32_t iter_limit) {
+    PSP_TRACE_SENTINEL();
+    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+
+    if (!m_schema.has_column(name)) {
+        std::cout << "Cannot downcast a column that does not exist." << std::endl;
+        return;
+    }
+
+    t_uindex idx = m_schema.get_colidx(name);
+    std::shared_ptr<t_column> current_col = m_columns[idx];
+    t_dtype current_type = current_col->get_dtype();
+
+    if (current_type == DTYPE_STR || current_type == DTYPE_NONE) {
+        return;
+    }
+    
+    // Create a new string column
+    std::shared_ptr<t_column> downcast_col = make_column(name, DTYPE_STR, current_col->is_status_enabled());
+    downcast_col->init();
+    downcast_col->reserve(std::max(size(), std::max(static_cast<t_uindex>(8), m_capacity)));
+    downcast_col->set_size(size());
+
+    // Don't copy data, but mutate the schema
+    m_schema.retype_column(name, DTYPE_STR);
+    set_column(idx, downcast_col);
+
+    std::cout << "Column " << name << " was cast to string due to an invalid value." << std::endl;
+}
+
+void
 t_table::set_column(t_uindex idx, std::shared_ptr<t_column> col) {
     m_columns[idx] = col;
 }

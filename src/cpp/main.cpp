@@ -396,32 +396,52 @@ col_to_js_typed_array(T ctx, t_index idx) {
     return arr;
 }
 
+// Fill individual columns with data from JS
+
 void
-_fill_col_numeric(val accessor, t_table& tbl, std::shared_ptr<t_column> col, std::string name, std::int32_t cidx, t_dtype type,
+_fill_col_string(val accessor, std::shared_ptr<t_column> col, std::string name, std::int32_t cidx, t_dtype type,
     bool is_arrow) {
+
     t_uindex nrows = col->size();
 
     if (is_arrow) {
-        val data = accessor["values"];
+        if (accessor["constructor"]["name"].as<std::string>() == "DictionaryVector") {
 
-        switch (type) {
-            case DTYPE_INT8: {
-                arrow::vecFromTypedArray(data, col->get_nth<std::int8_t>(0), nrows);
-            } break;
-            case DTYPE_INT16: {
-                arrow::vecFromTypedArray(data, col->get_nth<std::int16_t>(0), nrows);
-            } break;
-            case DTYPE_INT32: {
-                arrow::vecFromTypedArray(data, col->get_nth<std::int32_t>(0), nrows);
-            } break;
-            case DTYPE_FLOAT32: {
-                arrow::vecFromTypedArray(data, col->get_nth<float>(0), nrows);
-            } break;
-            case DTYPE_FLOAT64: {
-                arrow::vecFromTypedArray(data, col->get_nth<double>(0), nrows);
-            } break;
-            default:
-                break;
+            val dictvec = accessor["dictionary"];
+            arrow::fill_col_dict(dictvec, col);
+
+            // Now process index into dictionary
+
+            // Perspective stores string indices in a 32bit unsigned array
+            // Javascript's typed arrays handle copying from various bitwidth arrays properly
+            val vkeys = accessor["indices"]["values"];
+            arrow::vecFromTypedArray(vkeys, col->get_nth<t_uindex>(0), nrows, "Uint32Array");
+
+        } else if (accessor["constructor"]["name"].as<std::string>() == "Utf8Vector"
+            || accessor["constructor"]["name"].as<std::string>() == "BinaryVector") {
+
+            val vdata = accessor["values"];
+            std::int32_t vsize = vdata["length"].as<std::int32_t>();
+            std::vector<std::uint8_t> data;
+            data.reserve(vsize);
+            data.resize(vsize);
+            arrow::vecFromTypedArray(vdata, data.data(), vsize);
+
+            val voffsets = accessor["valueOffsets"];
+            std::int32_t osize = voffsets["length"].as<std::int32_t>();
+            std::vector<std::int32_t> offsets;
+            offsets.reserve(osize);
+            offsets.resize(osize);
+            arrow::vecFromTypedArray(voffsets, offsets.data(), osize);
+
+            std::string elem;
+
+            for (std::int32_t i = 0; i < nrows; ++i) {
+                std::int32_t bidx = offsets[i];
+                std::size_t es = offsets[i + 1] - bidx;
+                elem.assign(reinterpret_cast<char*>(data.data()) + bidx, es);
+                col->set_nth(i, elem);
+            }
         }
     } else {
         for (auto i = 0; i < nrows; ++i) {
@@ -435,36 +455,10 @@ _fill_col_numeric(val accessor, t_table& tbl, std::shared_ptr<t_column> col, std
                 continue;
             }
 
-            switch (type) {
-                case DTYPE_INT8: {
-                    col->set_nth(i, item.as<std::int8_t>());
-                } break;
-                case DTYPE_INT16: {
-                    col->set_nth(i, item.as<std::int16_t>());
-                } break;
-                case DTYPE_INT32: {
-                    // This handles cases where a long sequence of e.g. 0 precedes a clearly
-                    // float value in an inferred column. Would not be needed if the type
-                    // inference checked the entire column/we could reset parsing.
-                    double fval = item.as<double>();
-                    if (fval > 2147483647 || fval < -2147483648) {
-                        tbl.promote_column(name, DTYPE_FLOAT64, i);
-                        col = tbl.get_column(name);
-                        type = DTYPE_FLOAT64;
-                        col->set_nth(i, fval);
-                    } else {
-                        col->set_nth(i, static_cast<std::int32_t>(fval));
-                    }     
-                } break;
-                case DTYPE_FLOAT32: {
-                    col->set_nth(i, item.as<float>());
-                } break;
-                case DTYPE_FLOAT64: {
-                    col->set_nth(i, item.as<double>());
-                } break;
-                default:
-                    break;
-            }
+            std::wstring welem = item.as<std::wstring>();
+            std::wstring_convert<utf16convert_type, wchar_t> converter;
+            std::string elem = converter.to_bytes(welem);
+            col->set_nth(i, elem);
         }
     }
 }
@@ -598,49 +592,31 @@ _fill_col_bool(val accessor, std::shared_ptr<t_column> col, std::string name, st
 }
 
 void
-_fill_col_string(val accessor, std::shared_ptr<t_column> col, std::string name, std::int32_t cidx, t_dtype type,
+_fill_col_numeric(val accessor, t_table& tbl, std::shared_ptr<t_column> col, std::string name, std::int32_t cidx, t_dtype type,
     bool is_arrow) {
-
     t_uindex nrows = col->size();
 
     if (is_arrow) {
-        if (accessor["constructor"]["name"].as<std::string>() == "DictionaryVector") {
+        val data = accessor["values"];
 
-            val dictvec = accessor["dictionary"];
-            arrow::fill_col_dict(dictvec, col);
-
-            // Now process index into dictionary
-
-            // Perspective stores string indices in a 32bit unsigned array
-            // Javascript's typed arrays handle copying from various bitwidth arrays properly
-            val vkeys = accessor["indices"]["values"];
-            arrow::vecFromTypedArray(vkeys, col->get_nth<t_uindex>(0), nrows, "Uint32Array");
-
-        } else if (accessor["constructor"]["name"].as<std::string>() == "Utf8Vector"
-            || accessor["constructor"]["name"].as<std::string>() == "BinaryVector") {
-
-            val vdata = accessor["values"];
-            std::int32_t vsize = vdata["length"].as<std::int32_t>();
-            std::vector<std::uint8_t> data;
-            data.reserve(vsize);
-            data.resize(vsize);
-            arrow::vecFromTypedArray(vdata, data.data(), vsize);
-
-            val voffsets = accessor["valueOffsets"];
-            std::int32_t osize = voffsets["length"].as<std::int32_t>();
-            std::vector<std::int32_t> offsets;
-            offsets.reserve(osize);
-            offsets.resize(osize);
-            arrow::vecFromTypedArray(voffsets, offsets.data(), osize);
-
-            std::string elem;
-
-            for (std::int32_t i = 0; i < nrows; ++i) {
-                std::int32_t bidx = offsets[i];
-                std::size_t es = offsets[i + 1] - bidx;
-                elem.assign(reinterpret_cast<char*>(data.data()) + bidx, es);
-                col->set_nth(i, elem);
-            }
+        switch (type) {
+            case DTYPE_INT8: {
+                arrow::vecFromTypedArray(data, col->get_nth<std::int8_t>(0), nrows);
+            } break;
+            case DTYPE_INT16: {
+                arrow::vecFromTypedArray(data, col->get_nth<std::int16_t>(0), nrows);
+            } break;
+            case DTYPE_INT32: {
+                arrow::vecFromTypedArray(data, col->get_nth<std::int32_t>(0), nrows);
+            } break;
+            case DTYPE_FLOAT32: {
+                arrow::vecFromTypedArray(data, col->get_nth<float>(0), nrows);
+            } break;
+            case DTYPE_FLOAT64: {
+                arrow::vecFromTypedArray(data, col->get_nth<double>(0), nrows);
+            } break;
+            default:
+                break;
         }
     } else {
         for (auto i = 0; i < nrows; ++i) {
@@ -654,10 +630,44 @@ _fill_col_string(val accessor, std::shared_ptr<t_column> col, std::string name, 
                 continue;
             }
 
-            std::wstring welem = item.as<std::wstring>();
-            std::wstring_convert<utf16convert_type, wchar_t> converter;
-            std::string elem = converter.to_bytes(welem);
-            col->set_nth(i, elem);
+            if (val::global("isNaN").call<bool>("call", val::object(), item)) {
+                tbl.downcast_column(name, i);
+                col = tbl.get_column(name);
+                type = DTYPE_STR;
+                _fill_col_string(accessor, col, name, cidx, type, is_arrow);
+                return;
+            }
+
+            switch (type) {
+                case DTYPE_INT8: {
+                    col->set_nth(i, item.as<std::int8_t>());
+                } break;
+                case DTYPE_INT16: {
+                    col->set_nth(i, item.as<std::int16_t>());
+                } break;
+                case DTYPE_INT32: {
+                    // This handles cases where a long sequence of e.g. 0 precedes a clearly
+                    // float value in an inferred column. Would not be needed if the type
+                    // inference checked the entire column/we could reset parsing.
+                    double fval = item.as<double>();
+                    if (fval > 2147483647 || fval < -2147483648) {
+                        tbl.promote_column(name, DTYPE_FLOAT64, i);
+                        col = tbl.get_column(name);
+                        type = DTYPE_FLOAT64;
+                        col->set_nth(i, fval);
+                    } else {
+                        col->set_nth(i, static_cast<std::int32_t>(fval));
+                    }     
+                } break;
+                case DTYPE_FLOAT32: {
+                    col->set_nth(i, item.as<float>());
+                } break;
+                case DTYPE_FLOAT64: {
+                    col->set_nth(i, item.as<double>());
+                } break;
+                default:
+                    break;
+            }
         }
     }
 }
