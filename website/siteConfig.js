@@ -10,56 +10,56 @@
 
 /* List of projects/orgs using your project for the users page */
 const users = [
-  // {
-  //   caption: 'User1',
-  //   // You will need to prepend the image path with your baseUrl
-  //   // if it is not '/', like: '/test-site/img/docusaurus.svg'.
-  //   image: '/img/perspective.svg',
-  //   infoLink: 'https://jpmorganchase.hithub.io/perspective/',
-  //   pinned: true,
-  // },
+    // {
+    //   caption: 'User1',
+    //   // You will need to prepend the image path with your baseUrl
+    //   // if it is not '/', like: '/test-site/img/docusaurus.svg'.
+    //   image: '/img/perspective.svg',
+    //   infoLink: 'https://jpmorganchase.hithub.io/perspective/',
+    //   pinned: true,
+    // },
 ];
 
 const siteConfig = {
-  title: 'Perspective' /* title for your website */,
-  tagline: 'Streaming Analytics via WebAssembly',
-  url: 'https://jpmorganchase.github.io/' /* your website url */,
-  baseUrl: '/perspective/' /* base url for your project */,
-  // For github.io type URLs, you would set the url and baseUrl like:
-  //   url: 'https://facebook.github.io',
-  //   baseUrl: '/test-site/',
+    title: "Perspective" /* title for your website */,
+    tagline: "Streaming Analytics via WebAssembly",
+    url: "https://jpmorganchase.github.io/" /* your website url */,
+    baseUrl: "/perspective/" /* base url for your project */,
+    // For github.io type URLs, you would set the url and baseUrl like:
+    //   url: 'https://facebook.github.io',
+    //   baseUrl: '/test-site/',
 
-  // Used for publishing and more
-  projectName: 'perspective',
-  organizationName: 'jpmorganchase',
-  // For top-level user or org sites, the organization is still the same.
-  // e.g., for the https://JoelMarcey.github.io site, it would be set like...
-  //   organizationName: 'JoelMarcey'
+    // Used for publishing and more
+    projectName: "perspective",
+    organizationName: "jpmorganchase",
+    // For top-level user or org sites, the organization is still the same.
+    // e.g., for the https://JoelMarcey.github.io site, it would be set like...
+    //   organizationName: 'JoelMarcey'
 
-  // For no header links in the top nav bar -> headerLinks: [],
-  headerLinks: [
-    {doc: 'installation', label: 'Docs'},
-    {doc: 'perspective-viewer', label: 'API'},
-    {blog: true, label: 'Blog'},
-    {href: 'https://github.com/jpmorganchase/perspective/', label: 'GitHub'},
-  ],
+    // For no header links in the top nav bar -> headerLinks: [],
+    headerLinks: [
+        {doc: "installation", label: "Docs"},
+        {doc: "perspective-viewer", label: "API"},
+        {blog: true, label: "Blog"},
+        {href: "https://github.com/jpmorganchase/perspective/", label: "GitHub"}
+    ],
 
-  // If you have users set above, you add it here:
-  users,
+    // If you have users set above, you add it here:
+    users,
 
-  /* path to images for header/footer */
-  headerIcon: 'img/perspective.svg',
-  footerIcon: 'img/perspective.svg',
-  favicon: 'img/favicon.png',
+    /* path to images for header/footer */
+    headerIcon: "img/perspective2.svg",
+    footerIcon: "img/perspective2.svg",
+    favicon: "img/favicon.png",
 
-  /* colors for website */
-  colors: {
-    primaryColor: '#242526',
-    secondaryColor: '#1A7DA1',
-  },
+    /* colors for website */
+    colors: {
+        primaryColor: "#242526",
+        secondaryColor: "#1A7DA1"
+    },
 
-  /* custom fonts for website */
-  /*fonts: {
+    /* custom fonts for website */
+    /*fonts: {
     myFont: [
       "Times New Roman",
       "Serif"
@@ -70,43 +70,42 @@ const siteConfig = {
     ]
   },*/
 
-  // This copyright info is used in /core/Footer.js and blog rss/atom feeds.
-  copyright:
-    'Copyright © ' +
-    new Date().getFullYear() +
-    ' Perspective Authors',
+    // This copyright info is used in /core/Footer.js and blog rss/atom feeds.
+    copyright: "Copyright © " + new Date().getFullYear() + " Perspective Authors",
 
-  highlight: {
-    // Highlight.js theme to use for syntax highlighting in code blocks
-    theme: 'monokai',
-  },
+    highlight: {
+        // Highlight.js theme to use for syntax highlighting in code blocks
+        theme: "monokai"
+    },
 
-  // Add custom scripts here that would be placed in <script> tags
-  scripts: [
-    'https://buttons.github.io/buttons.js', 
-    'https://unpkg.com/@jpmorganchase/perspective/build/perspective.js',
-    'https://unpkg.com/@jpmorganchase/perspective-viewer/build/perspective.view.js',
-    'https://unpkg.com/@jpmorganchase/perspective-viewer-hypergrid/build/hypergrid.plugin.js',
-    'https://unpkg.com/@jpmorganchase/perspective-viewer-highcharts/build/highcharts.plugin.js',
-    'js/animation.js'
-  ],
+    // Add custom scripts here that would be placed in <script> tags
+    scripts: [
+        "https://buttons.github.io/buttons.js",
+        "https://unpkg.com/@jpmorganchase/perspective/build/perspective.js",
+        "https://unpkg.com/@jpmorganchase/perspective-viewer/build/perspective.view.js",
+        "https://unpkg.com/@jpmorganchase/perspective-viewer-hypergrid/build/hypergrid.plugin.js",
+        "https://unpkg.com/@jpmorganchase/perspective-viewer-highcharts/build/highcharts.plugin.js",
+        "js/animation.js"
+    ],
 
-  stylesheets: [
-    'https://unpkg.com/@jpmorganchase/perspective-examples/build/material.css',
-    'https://fonts.googleapis.com/css?family=Montserrat:300',
-    'css/material.dark.css'
-  ],
+    stylesheets: [
+        "https://fonts.googleapis.com/css?family=Montserrat:300",
+        "https://fonts.googleapis.com/css?family=Material+Icons",
+        "https://fonts.googleapis.com/css?family=Open+Sans",
+        "https://fonts.googleapis.com/css?family=Roboto+Mono",
+        "css/material.dark.css"
+    ],
 
-  /* On page navigation for the current documentation page */
-  onPageNav: 'separate',
+    /* On page navigation for the current documentation page */
+    onPageNav: "separate",
 
-  /* Open Graph and Twitter card images */
-  ogImage: 'img/perspective.png',
-  twitterImage: 'img/perspective.png',
+    /* Open Graph and Twitter card images */
+    ogImage: "img/perspective.png",
+    twitterImage: "img/perspective.png"
 
-  // You may provide arbitrary config keys to be used as needed by your
-  // template. For example, if you need your repo's URL...
-  //   repoUrl: 'https://github.com/facebook/test-site',
+    // You may provide arbitrary config keys to be used as needed by your
+    // template. For example, if you need your repo's URL...
+    //   repoUrl: 'https://github.com/facebook/test-site',
 };
 
 module.exports = siteConfig;

@@ -29,10 +29,6 @@
     border: none;
 }
 
-a {
-    color: #1A7DA1 !important;
-}
-
 .titleViewer ul {
     background: none !important;
 }
@@ -44,6 +40,11 @@ a {
 
 .post h1, .post h2, .post h3, .post h4, .post h5, .post h6 {
     color: #1A7DA1 !important;
+}
+
+h2.headerTitleWithLogo {
+    font-family: "Montserrat";
+    color: #f9f9f9 !important;
 }
 
 .mainContainer .blockImage img {

@@ -4,17 +4,34 @@
     "next": "Next",
     "previous": "Previous",
     "tagline": "Streaming Analytics via WebAssembly",
-    "development": "Developer's Guide",
-    "installation": "Installation",
-    "perspective-viewer": "perspective-viewer",
-    "perspective": "perspective",
-    "usage": "Usage",
-    "Docs": "Docs",
-    "API": "API",
-    "Blog": "Blog",
-    "GitHub": "GitHub",
-    "Getting Started": "Getting Started",
-    "First Category": "First Category"
+    "docs": {
+      "development": {
+        "title": "development"
+      },
+      "installation": {
+        "title": "installation"
+      },
+      "perspective-viewer": {
+        "title": "perspective-viewer"
+      },
+      "perspective": {
+        "title": "perspective"
+      },
+      "usage": {
+        "title": "usage"
+      }
+    },
+    "links": {
+      "Docs": "Docs",
+      "API": "API",
+      "Blog": "Blog",
+      "GitHub": "GitHub"
+    },
+    "categories": {
+      "Getting Started": "Getting Started",
+      "API": "API",
+      "First Category": "First Category"
+    }
   },
   "pages-strings": {
     "Help Translate|recruit community translators for your project": "Help Translate",
