@@ -200,7 +200,7 @@ std::vector<U> vecFromArray(T& arr){
  * Data Loading
  */
 template <>
-std::vector<t_sortspec> _get_sort(py::object j_sortby) {
+std::vector<t_sortspec> _get_sort(std::vector<std::string>& col_names, bool is_column_sort, py::object j_sortby) {
     // TODO
     std::vector<t_sortspec> svec{};
     return svec;
@@ -219,7 +219,7 @@ std::vector<t_sortspec> _get_sort(py::object j_sortby) {
  */
 template <> 
 std::vector<t_fterm>
-_get_fterms(t_schema schema, py::object j_filters) {
+_get_fterms(t_schema schema, py::object j_date_parser, py::object j_filters) {
     // TODO
     std::vector<t_fterm> fvec{};
     return fvec;
@@ -237,7 +237,7 @@ _get_fterms(t_schema schema, py::object j_filters) {
  *
  */
 std::vector<t_aggspec>
-_get_aggspecs(py::object j_aggs) {
+_get_aggspecs(t_schema schema, std::string separator, bool column_only, py::object j_aggs) {
     // TODO
     std::vector<t_aggspec> aggspecs;
     return aggspecs;
@@ -481,6 +481,52 @@ clone_gnode_table(t_pool* pool, std::shared_ptr<t_gnode> gnode, T computed) {
     return new_gnode;
 }
 
+/*
+template <>
+t_config
+make_view_config(const t_schema& schema, std::string separator, py::object date_parser, py::object config) {
+    // TODO
+    t_config view_config;
+    return view_config;
+
+}
+
+template <>
+std::shared_ptr<View<t_ctx0>> make_view_zero(t_pool* pool, std::int32_t sides,
+    std::shared_ptr<t_gnode> gnode, std::string name, std::string separator, PY::object config,
+    py::object date_parser) {
+        // TODO
+        auto schema = gnode->get_tblschema();
+        t_config view_config = make_view_config(schema, separator, date_parser, config);
+        auto view_ptr = std::make_shared<View<t_ctx0>>(
+            pool, ctx, sides, gnode, name, separator, view_config);
+        return view_ptr;
+    }
+
+template <>
+std::shared_ptr<View<t_ctx1>> make_view_one(t_pool* pool, std::int32_t sides,
+    std::shared_ptr<t_gnode> gnode, std::string name, std::string separator, py::object config,
+    py::object date_parser) {
+        // TODO
+        auto schema = gnode->get_tblschema();
+        t_config view_config = make_view_config(schema, separator, date_parser, config);
+        auto view_ptr = std::make_shared<View<t_ctx1>>(
+            pool, ctx, sides, gnode, name, separator, view_config);
+        return view_ptr;
+    }
+
+template <>
+std::shared_ptr<View<t_ctx2>> make_view_two(t_pool* pool, std::int32_t sides,
+    std::shared_ptr<t_gnode> gnode, std::string name, std::string separator, py::object config,
+    py::object date_parser) {
+        // TODO
+        auto schema = gnode->get_tblschema();
+        t_config view_config = make_view_config(schema, separator, date_parser, config);
+        auto view_ptr = std::make_shared<View<t_ctx2>>(
+            pool, ctx, sides, gnode, name, separator, view_config);
+        return view_ptr;
+    }
+*/
 /**
  *
  *
@@ -492,17 +538,15 @@ clone_gnode_table(t_pool* pool, std::shared_ptr<t_gnode> gnode, T computed) {
  * -------
  *
  */
-template<typename T>
 std::shared_ptr<t_ctx0>
-make_context_zero(t_schema schema, t_filter_op combiner, T j_filters, T j_columns,
-    T j_sortby, t_pool* pool, std::shared_ptr<t_gnode> gnode, std::string name) {
-    auto columns = std::vector<std::string>();
-    auto fvec = _get_fterms(schema, j_filters);
-    auto svec = _get_sort(j_sortby);
-    auto cfg = t_config(columns, combiner, fvec);
+make_context_zero(t_schema schema, t_filter_op combiner,
+        std::vector<std::string> columns, std::vector<t_fterm> filters,
+        std::vector<t_sortspec> sorts, t_pool* pool, std::shared_ptr<t_gnode> gnode,
+        std::string name) {
+    auto cfg = t_config(columns, combiner, filters);
     auto ctx0 = std::make_shared<t_ctx0>(schema, cfg);
     ctx0->init();
-    ctx0->sort_by(svec);
+    ctx0->sort_by(sorts);
     pool->register_context(gnode->get_id(), name, ZERO_SIDED_CONTEXT,
         reinterpret_cast<std::uintptr_t>(ctx0.get()));
     return ctx0;
@@ -519,22 +563,25 @@ make_context_zero(t_schema schema, t_filter_op combiner, T j_filters, T j_column
  * -------
  *
  */
-template<typename T>
 std::shared_ptr<t_ctx1>
-make_context_one(t_schema schema, T j_pivots, t_filter_op combiner, T j_filters, T j_aggs,
-    T j_sortby, t_pool* pool, std::shared_ptr<t_gnode> gnode, std::string name) {
-    auto fvec = _get_fterms(schema, j_filters);
-    auto aggspecs = _get_aggspecs(j_aggs);
-    auto pivots = vecFromArray<py::object, std::string>(j_pivots);
-    auto svec = _get_sort(j_sortby);
-
-    auto cfg = t_config(pivots, aggspecs, combiner, fvec);
+make_context_one(t_schema schema, std::vector<t_pivot> pivots, t_filter_op combiner,
+    std::vector<t_fterm> filters, std::vector<t_aggspec> aggregates,
+    std::vector<t_sortspec> sorts, std::int32_t pivot_depth, bool column_only, t_pool* pool,
+    std::shared_ptr<t_gnode> gnode, std::string name) {
+    auto cfg = t_config(pivots, aggregates, combiner, filters);
     auto ctx1 = std::make_shared<t_ctx1>(schema, cfg);
 
     ctx1->init();
-    ctx1->sort_by(svec);
-    pool->register_context(
-        gnode->get_id(), name, ONE_SIDED_CONTEXT, reinterpret_cast<std::uintptr_t>(ctx1.get()));
+    ctx1->sort_by(sorts);
+    pool->register_context(gnode->get_id(), name, ONE_SIDED_CONTEXT,
+        reinterpret_cast<std::uintptr_t>(ctx1.get()));
+
+    if (pivot_depth > -1) {
+        ctx1->set_depth(pivot_depth - 1);
+    } else {
+        ctx1->set_depth(pivots.size());
+    }
+
     return ctx1;
 }
 
@@ -549,23 +596,41 @@ make_context_one(t_schema schema, T j_pivots, t_filter_op combiner, T j_filters,
  * -------
  *
  */
-template<typename T>
 std::shared_ptr<t_ctx2>
-make_context_two(t_schema schema, T j_rpivots, T j_cpivots, t_filter_op combiner,
-    T j_filters, T j_aggs, bool show_totals, t_pool* pool, std::shared_ptr<t_gnode> gnode,
-    std::string name) {
-    auto fvec = _get_fterms(schema, j_filters);
-    auto aggspecs = _get_aggspecs(j_aggs);
-    auto rpivots = vecFromArray<py::object, std::string>(j_rpivots);
-    auto cpivots = vecFromArray<py::object, std::string>(j_cpivots);
-    t_totals total = show_totals ? TOTALS_BEFORE : TOTALS_HIDDEN;
+make_context_two(t_schema schema, std::vector<t_pivot> rpivots,
+    std::vector<t_pivot> cpivots, t_filter_op combiner, std::vector<t_fterm> filters,
+    std::vector<t_aggspec> aggregates, std::vector<t_sortspec> sorts,
+    std::vector<t_sortspec> col_sorts, std::int32_t rpivot_depth, std::int32_t cpivot_depth,
+    t_pool* pool, std::shared_ptr<t_gnode> gnode, std::string name) {
+    t_totals total = sorts.size() > 0 ? TOTALS_BEFORE : TOTALS_HIDDEN;
 
-    auto cfg = t_config(rpivots, cpivots, aggspecs, total, combiner, fvec);
+    auto cfg = t_config(rpivots, cpivots, aggregates, total, combiner, filters);
     auto ctx2 = std::make_shared<t_ctx2>(schema, cfg);
 
     ctx2->init();
-    pool->register_context(
-        gnode->get_id(), name, TWO_SIDED_CONTEXT, reinterpret_cast<std::uintptr_t>(ctx2.get()));
+    pool->register_context(gnode->get_id(), name, TWO_SIDED_CONTEXT,
+        reinterpret_cast<std::uintptr_t>(ctx2.get()));
+
+    if (rpivot_depth > -1) {
+        ctx2->set_depth(t_header::HEADER_ROW, rpivot_depth - 1);
+    } else {
+        ctx2->set_depth(t_header::HEADER_ROW, rpivots.size());
+    }
+
+    if (cpivot_depth > -1) {
+        ctx2->set_depth(t_header::HEADER_COLUMN, cpivot_depth - 1);
+    } else {
+        ctx2->set_depth(t_header::HEADER_COLUMN, cpivots.size());
+    }
+
+    if (sorts.size() > 0) {
+        ctx2->sort_by(sorts);
+    }
+
+    if (col_sorts.size() > 0) {
+        ctx2->column_sort_by(col_sorts);
+    }
+
     return ctx2;
 }
 
