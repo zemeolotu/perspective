@@ -35,10 +35,12 @@ namespace perspective {
 template <typename CTX_T>
 class PERSPECTIVE_EXPORT t_data_slice {
 public:
-    t_data_slice(std::shared_ptr<CTX_T> ctx, std::shared_ptr<std::vector<t_tscalar>> slice,
+    t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row, t_uindex end_row,
+        t_uindex start_col, t_uindex end_col, std::shared_ptr<std::vector<t_tscalar>> slice,
         std::shared_ptr<std::vector<std::string>> column_names);
 
-    t_data_slice(std::shared_ptr<CTX_T> ctx, std::shared_ptr<std::vector<t_tscalar>> slice,
+    t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row, t_uindex end_row,
+        t_uindex start_col, t_uindex end_col, std::shared_ptr<std::vector<t_tscalar>> slice,
         std::shared_ptr<std::vector<std::string>> column_names,
         std::shared_ptr<std::vector<t_uindex>> column_indices);
 
@@ -67,9 +69,12 @@ public:
 
 private:
     std::shared_ptr<CTX_T> m_ctx;
+    t_uindex m_start_row;
+    t_uindex m_end_row;
+    t_uindex m_start_col;
+    t_uindex m_end_col;
     std::shared_ptr<std::vector<t_tscalar>> m_slice;
     std::shared_ptr<std::vector<std::string>> m_column_names;
     std::shared_ptr<std::vector<t_uindex>> m_column_indices;
-    t_get_data_extents m_data_extents;
 };
 } // end namespace perspective
