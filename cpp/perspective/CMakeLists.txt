@@ -296,6 +296,7 @@ set (SOURCE_FILES
 	src/cpp/extract_aggregate.cpp
 	src/cpp/filter.cpp
 	src/cpp/flat_traversal.cpp
+	src/cpp/get_data_extents.cpp
 	src/cpp/gnode.cpp
 	src/cpp/gnode_state.cpp
 	src/cpp/histogram.cpp

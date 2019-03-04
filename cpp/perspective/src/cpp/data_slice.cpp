@@ -45,7 +45,9 @@ t_data_slice<CTX_T>::~t_data_slice() {}
  */
 template <>
 t_tscalar
-t_data_slice<t_ctx0>::get(t_uindex ridx, t_uindex col) {
+t_data_slice<t_ctx0>::get(t_uindex ridx, t_uindex col) const {
+    // TODO: reverse the cidx calculation op
+    // (ridx - ext.m_srow) * stride + (cidx - ext.m_scol)
     t_tscalar rv;
     rv.clear();
     return rv;
@@ -53,7 +55,7 @@ t_data_slice<t_ctx0>::get(t_uindex ridx, t_uindex col) {
 
 template <>
 t_tscalar
-t_data_slice<t_ctx1>::get(t_uindex ridx, t_uindex cidx) {
+t_data_slice<t_ctx1>::get(t_uindex ridx, t_uindex cidx) const {
     t_tscalar rv;
     rv.clear();
     return rv;
@@ -61,10 +63,22 @@ t_data_slice<t_ctx1>::get(t_uindex ridx, t_uindex cidx) {
 
 template <>
 t_tscalar
-t_data_slice<t_ctx2>::get(t_uindex ridx, t_uindex cidx) {
+t_data_slice<t_ctx2>::get(t_uindex ridx, t_uindex cidx) const {
     t_tscalar rv;
     rv.clear();
     return rv;
+}
+
+template <>
+std::vector<t_tscalar>
+t_data_slice<t_ctx0>::get_row_path(t_uindex idx) const {
+    return std::vector<t_tscalar>();
+}
+
+template <typename CTX_T>
+std::vector<t_tscalar>
+t_data_slice<CTX_T>::get_row_path(t_uindex idx) const {
+    return m_ctx->unity_get_row_path(idx);
 }
 
 // Getters
@@ -103,6 +117,12 @@ template <>
 bool
 t_data_slice<t_ctx0>::is_column_only() const {
     return false;
+}
+
+template <typename CTX_T>
+t_get_data_extents
+t_data_slice<CTX_T>::get_data_extents() const {
+    return m_data_extents;
 }
 
 // Explicitly instantiate data slice for each context

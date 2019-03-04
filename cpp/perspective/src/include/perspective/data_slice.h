@@ -13,6 +13,7 @@
 #include <perspective/base.h>
 #include <perspective/raw_types.h>
 #include <perspective/scalar.h>
+#include <perspective/get_data_extents.h>
 #include <perspective/context_zero.h>
 #include <perspective/context_one.h>
 #include <perspective/context_two.h>
@@ -53,12 +54,15 @@ public:
      * @return t_tscalar a valid scalar containing the underlying data, or a new
      * t_tscalar initialized with an invalid flag.
      */
-    t_tscalar get(t_uindex ridx, t_uindex cidx);
+    t_tscalar get(t_uindex ridx, t_uindex cidx) const;
+
+    std::vector<t_tscalar> get_row_path(t_uindex idx) const;
 
     std::shared_ptr<CTX_T> get_context() const;
     std::shared_ptr<std::vector<t_tscalar>> get_slice() const;
     std::shared_ptr<std::vector<std::string>> get_column_names() const;
     std::shared_ptr<std::vector<t_uindex>> get_column_indices() const;
+    t_get_data_extents get_data_extents() const;
     bool is_column_only() const;
 
 private:
@@ -66,5 +70,6 @@ private:
     std::shared_ptr<std::vector<t_tscalar>> m_slice;
     std::shared_ptr<std::vector<std::string>> m_column_names;
     std::shared_ptr<std::vector<t_uindex>> m_column_indices;
+    t_get_data_extents m_data_extents;
 };
 } // end namespace perspective
