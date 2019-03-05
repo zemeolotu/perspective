@@ -286,7 +286,6 @@ set (SOURCE_FILES
 	src/cpp/context_zero.cpp
 	src/cpp/custom_column.cpp
 	src/cpp/data_slice.cpp
-	src/cpp/date.cpp
 	src/cpp/data.cpp
 	src/cpp/date.cpp
 	src/cpp/dense_nodes.cpp

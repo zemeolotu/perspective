@@ -308,8 +308,10 @@ export default function(Module) {
             end_row += this.config.column_pivot.length;
         }
 
+        let data_slice;
         if (this.sides() === 0) {
             slice = __MODULE__.get_data_zero(this._View, start_row, end_row, start_col, end_col);
+            data_slice = __MODULE__.get_data_slice_zero(this._View, start_row, end_row, start_col, end_col);
         } else if (this.sides() === 1) {
             slice = __MODULE__.get_data_one(this._View, start_row, end_row, start_col, end_col);
         } else {
@@ -326,24 +328,12 @@ export default function(Module) {
             depth = this.config.column_pivot.length;
         }
 
-        /*
-        let num_rows = this.num_rows();
-        let num_cols = this.num_cols();
-        let column_names = extract_vector(data_slice.get_column_names());
-        for (let ridx = 0; ridx < num_rows; ridx++) {
-            row = {}; // or array for col, etc;
-            for (let cidx = 0; cidx < num_cols; cidx++) {
-                row[column_names[cidx]] = data_slice.get(ridx, cidx);
-            }
-            data.push(row);
-        }
-        */
-
         let col_names = [[]].concat(this._column_names(skip, depth));
         let row;
         let ridx = -1;
         for (let idx = 0; idx < slice.length; idx++) {
             let cidx = idx % Math.min(end_col - start_col, col_names.slice(start_col, end_col - start_col + 1).length);
+            console.log("ext:", ridx, cidx, idx);
             if (cidx === 0) {
                 if (row) {
                     formatter.addRow(data, row);
@@ -354,6 +344,8 @@ export default function(Module) {
             if (this.sides() === 0) {
                 let col_name = col_names[start_col + cidx + 1];
                 formatter.setColumnValue(data, row, col_name, slice[idx]);
+                let ds = __MODULE__.get_from_data_slice_zero(data_slice, ridx, cidx);
+                console.log(ds);
             } else {
                 if (cidx === 0) {
                     if (!this.column_only) {
@@ -380,6 +372,17 @@ export default function(Module) {
             data = formatter.slice(data, this.config.column_pivot.length);
         }
 
+        /*         if (this.sides() === 0) {
+            let num_rows = await this.num_rows();
+            let num_cols = await this.num_columns();
+            for (let ridx = 0; ridx < num_rows; ridx++) {
+                for (let cidx = 0; cidx < num_cols; cidx++) {
+                    let ds = __MODULE__.get_from_data_slice_zero(data_slice, ridx, cidx);
+                    console.log(ds);
+                }
+            }
+        }
+ */
         return formatter.formatData(data, options.config);
     };
 
