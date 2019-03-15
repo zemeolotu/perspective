@@ -312,29 +312,18 @@ export default function(Module) {
             slice = __MODULE__.get_data_slice_one(this._View, start_row, end_row, start_col, end_col);
         } else {
             slice = __MODULE__.get_data_slice_two(this._View, start_row, end_row, start_col, end_col);
-            //console.log(__MODULE__.get_data_two(this._View, start_row, end_row, start_col, end_col));
         }
 
+        let num_sides = this.sides();
         let data = formatter.initDataValue();
 
-        if (this.sides() === 0) {
-            const col_names = extract_vector(slice.get_column_names());
-            for (let ridx = start_row; ridx < end_row; ridx++) {
-                let row = formatter.initRowValue();
-                for (let cidx = start_col; cidx < end_col; cidx++) {
-                    const col_name = col_names[cidx];
-                    const value = __MODULE__.get_from_data_slice_zero(slice, ridx, cidx);
-                    formatter.setColumnValue(data, row, col_name, value);
-                }
-                formatter.addRow(data, row);
-            }
-        } else {
-            const col_names = extract_vector(slice.get_column_names());
-            for (let ridx = start_row; ridx < end_row; ridx++) {
-                const row = formatter.initRowValue();
-                for (let cidx = start_col; cidx < end_col; cidx++) {
-                    const col_name = col_names[cidx];
-                    if (cidx === 0 && !this.column_only) {
+        const col_names = extract_vector(slice.get_column_names());
+        for (let ridx = start_row; ridx < end_row; ridx++) {
+            let row = formatter.initRowValue();
+            for (let cidx = start_col; cidx < end_col; cidx++) {
+                const col_name = col_names[cidx];
+                if (cidx === 0 && num_sides !== 0) {
+                    if (!this.column_only) {
                         const row_path = slice.get_row_path(ridx);
                         formatter.initColumnValue(data, row, col_name);
                         for (let i = 0; i < row_path.size(); i++) {
@@ -342,21 +331,37 @@ export default function(Module) {
                             formatter.addColumnValue(data, row, col_name, value);
                         }
                         row_path.delete();
-                    } else {
-                        let value;
-                        if (this.sides() === 1) {
-                            value = __MODULE__.get_from_data_slice_one(slice, ridx, cidx);
-                        } else {
-                            value = __MODULE__.get_from_data_slice_two(slice, ridx, cidx);
-                        }
-                        formatter.setColumnValue(data, row, col_name, value);
                     }
+                } else {
+                    let value;
+                    switch (num_sides) {
+                        case 0:
+                            {
+                                value = __MODULE__.get_from_data_slice_zero(slice, ridx, cidx);
+                            }
+                            break;
+                        case 1:
+                            {
+                                value = __MODULE__.get_from_data_slice_one(slice, ridx, cidx);
+                            }
+                            break;
+                        case 2:
+                            {
+                                value = __MODULE__.get_from_data_slice_two(slice, ridx, cidx);
+                            }
+                            break;
+                        default: {
+                            throw new Error("Cannot get data - view has invalid number of sides.");
+                        }
+                    }
+                    formatter.setColumnValue(data, row, col_name, value);
                 }
-                formatter.addRow(data, row);
             }
-            if (this.column_only) {
-                data = formatter.slice(data, this.config.column_pivot.length);
-            }
+            formatter.addRow(data, row);
+        }
+
+        if (this.column_only) {
+            data = formatter.slice(data, this.config.column_pivot.length);
         }
 
         return formatter.formatData(data, options.config);

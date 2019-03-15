@@ -75,7 +75,6 @@ t_data_slice<t_ctx2>::get(t_uindex ridx, t_uindex cidx) const {
     t_tscalar rv;
 
     if (m_column_indices.size() > 0) {
-        // std::cout << m_column_indices << std::endl;
         auto skip_cidx = std::find(m_column_indices.begin(), m_column_indices.end(), cidx);
         if (skip_cidx == m_column_indices.end()) {
             rv.clear();

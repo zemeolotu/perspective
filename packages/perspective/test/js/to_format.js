@@ -50,7 +50,7 @@ module.exports = perspective => {
             }
         });
 
-        it("one-sided column-only views should not have row paths", async function() {
+        it("column-only views should not have row paths", async function() {
             let table = perspective.table(int_float_string_data);
             let view = table.view({
                 column_pivot: ["int"]
