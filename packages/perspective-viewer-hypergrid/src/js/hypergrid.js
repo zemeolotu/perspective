@@ -78,6 +78,7 @@ const base_grid_properties = {
     showTreeColumn: false,
     singleRowSelectionMode: false,
     sortColumns: [],
+    sortOnDoubleClick: false,
     treeRenderer: "TreeCell",
     treeHeaderFont: "12px Arial, Helvetica, sans-serif",
     treeHeaderForegroundSelectionFont: '12px "Arial", Helvetica, sans-serif',
@@ -226,6 +227,8 @@ bindTemplate(TEMPLATE, style)(
                     format: value => this.grid.behavior.formatColumnHeader(value)
                 };
 
+                this.grid.addEventListener("fin-column-sort", this.grid.behavior.sortColumn);
+
                 // Add tree cell renderer
                 this.grid.cellRenderers.add("TreeCell", Base.extend({paint: treeLineRendererPaint}));
 
@@ -302,6 +305,7 @@ async function grid_update(div, view, task) {
     const dataModel = this.hypergrid.behavior.dataModel;
     dataModel.setDirty(nrows);
     dataModel._view = view;
+    dataModel._viewer = this;
     this.hypergrid.canvas.paintNow();
 }
 
@@ -354,6 +358,7 @@ async function grid_create(div, view, task) {
     dataModel.setIsTree(!!rowPivots.length);
     dataModel.setDirty(nrows);
     dataModel._view = view;
+    dataModel._viewer = this;
 
     dataModel.pspFetch = async range => {
         range.end_row += this.hasAttribute("settings") ? 8 : 2;
