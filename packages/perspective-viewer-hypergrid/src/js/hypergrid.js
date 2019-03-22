@@ -78,7 +78,7 @@ const base_grid_properties = {
     showTreeColumn: false,
     singleRowSelectionMode: false,
     sortColumns: [],
-    sortOnDoubleClick: false,
+    sortOnDoubleClick: true,
     treeRenderer: "TreeCell",
     treeHeaderFont: "12px Arial, Helvetica, sans-serif",
     treeHeaderForegroundSelectionFont: '12px "Arial", Helvetica, sans-serif',

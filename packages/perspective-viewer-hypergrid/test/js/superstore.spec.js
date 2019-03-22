@@ -25,6 +25,40 @@ async function set_lazy(page) {
     }, viewer);
 }
 
+async function double_click(page, column_name) {
+    const viewer = await page.$("perspective-viewer");
+
+    //get mouse coordinates of columns to double click
+    const {x, y} = await page.evaluate(
+        (element, column_name) => {
+            let {x, y} = element.hypergrid.canvas.getOrigin();
+            element.hypergrid.behavior.columns.some(column => {
+                if (column_name === column.header.split("|").slice(-1)[0]) {
+                    return true;
+                } else {
+                    x += column.getWidth();
+                    return false;
+                }
+            });
+            return {x, y};
+        },
+        viewer,
+        column_name
+    );
+
+    // double click on column
+    await page.mouse.click(x + 10, y + 10, {clickCount: 2});
+
+    await page.waitFor(
+        (element, column_name) => {
+            return element.sort.findIndex(item => item[0] === column_name) > -1;
+        },
+        {timeout: 3000},
+        viewer,
+        column_name
+    );
+}
+
 utils.with_server({}, () => {
     describe.page(
         "superstore.html",
@@ -93,6 +127,41 @@ utils.with_server({}, () => {
                     await page.evaluate(element => element.setAttribute("columns", '["Sales", "Profit"]'), viewer);
                     await page.evaluate(element => element.setAttribute("column-pivots", '["Category"]'), viewer);
                     await page.evaluate(element => element.setAttribute("sort", '[["Sales", "desc"]]'), viewer);
+                });
+            });
+
+            describe("header sort on double click", () => {
+                test.capture("double click to sort", async page => {
+                    await page.shadow_click("perspective-viewer", "#config_button");
+                    await double_click(page, "Order ID");
+                });
+
+                test.capture("adds new column sort with alt double click", async page => {
+                    await page.shadow_click("perspective-viewer", "#config_button");
+                    await double_click(page, "Order ID");
+
+                    await page.keyboard.down("AltLeft");
+                    await double_click(page, "Order Date");
+                    await page.keyboard.up("AltLeft");
+                });
+
+                test.capture("abs sorting on numeric column by shift double click", async page => {
+                    await page.shadow_click("perspective-viewer", "#config_button");
+                    await page.keyboard.down("ShiftLeft");
+                    await double_click(page, "Row ID");
+                    await page.keyboard.up("ShiftLeft");
+                });
+
+                test.capture("column sorting works with column split", async page => {
+                    const viewer = await page.$("perspective-viewer");
+                    await page.evaluate(element => element.setAttribute("columns", '["Sales", "Profit"]'), viewer);
+                    await page.evaluate(element => element.setAttribute("column-pivots", '["Category"]'), viewer);
+                    await page.evaluate(element => element.setAttribute("sort", '[["Category", "asc"],["Sales", "desc"]]'), viewer);
+                    await page.shadow_click("perspective-viewer", "#config_button");
+
+                    await page.keyboard.down("AltLeft");
+                    await double_click(page, "Sales");
+                    await page.keyboard.up("AltLeft");
                 });
             });
 
