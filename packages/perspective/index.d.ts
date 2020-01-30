@@ -1,5 +1,4 @@
-
-declare module '@jpmorganchase/perspective' {
+declare module '@finos/perspective' {
     /**** object types ****/
     export enum TypeNames {
         STRING = 'string',
@@ -79,16 +78,25 @@ declare module '@jpmorganchase/perspective' {
         [ key: string ]: TypeNames ;
     }
 
+    export interface SerializeConfig {
+        start_row: number,
+        end_row: number,
+        start_col: number,
+        end_col: number,
+    }
+
     /**** View ****/
     export type View = {
         delete(): Promise<void>;
         num_columns(): Promise<number>;
         num_rows(): Promise<number>;
-        on_update(callback: UpdateCallback): void;
         on_delete(callback: Function): void;
+        on_update(callback: UpdateCallback): void;
         schema(): Promise<Schema>;
-        to_json(): Promise<Array<object>>;
-        to_csv(): Promise<string>;
+        to_arrow(options?: SerializeConfig & { data_slice: any }): Promise<ArrayBuffer>;
+        to_columns(options?: SerializeConfig): Promise<Array<object>>;
+        to_csv(options?: SerializeConfig & { config: object }): Promise<string>;
+        to_json(options?: SerializeConfig): Promise<Array<object>>;
     }
 
     /**** Table ****/
@@ -97,22 +105,17 @@ declare module '@jpmorganchase/perspective' {
     export type TableData = string | Array<object> | { [key: string]: Array<object> } | { [key: string]: string }
 
     export type TableOptions = {
-        index: string,
+        index?: string,
         limit?: number
     }
 
-    export type AggregateConfig = {
-        column: string | Array<string>;
-        name?: string;
-        op: NUMBER_AGGREGATES | STRING_AGGREGATES | BOOLEAN_AGGREGATES;
-    };
-
     export type ViewConfig = {
-        row_pivot?: Array<string>;
-        column_pivot?: Array<string>;
-        sort?: Array<string>;
+        columns?: Array<string>;
+        row_pivots?: Array<string>;
+        column_pivots?: Array<string>;
+        aggregates?: { [column_name:string]: string; },
+        sort?: Array<Array<string>>;
         filter?: Array<Array<string>>;
-        aggregate: Array<AggregateConfig>;
     };
 
     export type Table = {
@@ -136,15 +139,19 @@ declare module '@jpmorganchase/perspective' {
     }
 
 
+    export type Client = {
+        open_table(name: string): Table,
+        open_view(name: string): View,
+    }
+
     type perspective = {
         TYPE_AGGREGATES: ValuesByType,
         TYPE_FILTERS: ValuesByType,
-        AGGREGATE_DEFAULTS: ValueByType,
-        FILTER_DEFAULTS: ValueByType,
         SORT_ORDERS: SortOrders,
-        table(): Table,
+        table(data_or_schema : TableData | Schema, options: TableOptions): Table,
         worker(): PerspectiveWorker,
         shared_worker(): PerspectiveWorker,
+        websocket(url: string): Client;
         override: (x: any) => void
     }
 
@@ -153,18 +160,16 @@ declare module '@jpmorganchase/perspective' {
     export default impl;
 }
 
-
-
-declare module "@jpmorganchase/perspective/build/psp.async.wasm" {
+declare module "@finos/perspective/build/psp.async.wasm" {
     const impl: ArrayBuffer;
     export default impl;
 }
 
-declare module "@jpmorganchase/perspective/build/psp.sync.wasm" {
+declare module "@finos/perspective/build/psp.sync.wasm" {
     const impl: ArrayBuffer;
     export default impl;
 }
 
-declare module "@jpmorganchase/perspective/build/perspective.wasm.worker.js" {}
-declare module "@jpmorganchase/perspective/build/perspective.asmjs.worker.js" {}
+declare module "@finos/perspective/build/perspective.wasm.worker.js" {}
+declare module "@finos/perspective/build/perspective.asmjs.worker.js" {}
 

@@ -12,11 +12,11 @@ import {renderers} from "./renderers.js";
 export class StateElement extends HTMLElement {
     get _plugin() {
         let current_renderers = renderers.getInstance();
-        let view = this.getAttribute("view");
+        let view = this.getAttribute("plugin");
         if (!view) {
             view = Object.keys(current_renderers)[0];
         }
-        this.setAttribute("view", view);
+        this.setAttribute("plugin", view);
         return current_renderers[view] || current_renderers[Object.keys(current_renderers)[0]];
     }
 
@@ -44,8 +44,16 @@ export class StateElement extends HTMLElement {
     _get_view_aggregates(selector) {
         selector = selector || "#active_columns perspective-row";
         return this._get_view_dom_columns(selector, s => {
+            let op = s.getAttribute("aggregate");
+            if (op[0] === "[") {
+                try {
+                    op = JSON.parse(op);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
             return {
-                op: s.getAttribute("aggregate"),
+                op,
                 column: s.getAttribute("name")
             };
         });
@@ -81,24 +89,27 @@ export class StateElement extends HTMLElement {
         });
     }
 
-    _get_view_hidden(aggregates, sort) {
-        aggregates = aggregates || this._get_view_aggregates();
-        let hidden = [];
-        sort = sort || this._get_view_sorts();
-        for (let s of sort) {
-            if (aggregates.map(agg => agg.column).indexOf(s[0]) === -1) {
-                hidden.push(s[0]);
-            }
-        }
-        return hidden;
-    }
-
     _get_visible_column_count() {
         return this._get_view_dom_columns().length;
     }
 
     get_aggregate_attribute() {
         const aggs = JSON.parse(this.getAttribute("aggregates")) || {};
-        return Object.keys(aggs).map(col => ({column: col, op: aggs[col]}));
+        const found = new Set();
+        const new_aggs = Object.keys(aggs).map(col => {
+            found.add(col);
+            return {column: col, op: aggs[col]};
+        });
+        if (this._aggregate_defaults) {
+            for (const column of Object.keys(this._aggregate_defaults)) {
+                if (!found.has(column)) {
+                    new_aggs.push({
+                        column,
+                        op: this._aggregate_defaults[column]
+                    });
+                }
+            }
+        }
+        return new_aggs;
     }
 }

@@ -11,7 +11,7 @@
 #include <perspective/base.h>
 #include <perspective/sym_table.h>
 #include <perspective/column.h>
-#include <unordered_map>
+#include <tsl/hopscotch_map.h>
 #include <functional>
 #include <mutex>
 
@@ -60,6 +60,7 @@ t_symtable::get_interned_tscalar(const t_tscalar& s) {
 
     t_tscalar rval;
     rval.set(get_interned_cstr(s.get_char_ptr()));
+    rval.m_status = s.m_status;
     return rval;
 }
 

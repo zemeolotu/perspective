@@ -9,33 +9,35 @@
 import * as d3 from "d3";
 
 import style from "../../less/chart.less";
-import perspectiveStyle from "../../less/perspective-view.less";
 import template from "../../html/d3fc-chart.html";
 import {areArraysEqualSimple} from "../utils/utils";
+import {initialiseStyles} from "../series/colorStyles";
 
-import {bindTemplate} from "@jpmorganchase/perspective-viewer/cjs/js/utils";
+import {bindTemplate} from "@finos/perspective-viewer/dist/esm/utils";
 
 const styleWithD3FC = `${style}${getD3FCStyles()}`;
 
 @bindTemplate(template, styleWithD3FC) // eslint-disable-next-line no-unused-vars
 class D3FCChartElement extends HTMLElement {
-    connectedCallback() {
-        this._container = this.shadowRoot.querySelector(".chart");
+    constructor() {
+        super();
         this._chart = null;
         this._settings = null;
+    }
 
-        // Add the additional styles needed for the perspective-viewer host
-        var style = document.createElement("style");
-        style.setAttribute("scope", "perspective-viewer");
-        style.textContent = perspectiveStyle;
-        this.shadowRoot.host.getRootNode().appendChild(style);
+    connectedCallback() {
+        console.log("connected callback");
+        this._container = this.shadowRoot.querySelector(".chart");
     }
 
     render(chart, settings) {
-        this.remove();
-
         this._chart = chart;
         this._settings = this._configureSettings(this._settings, settings);
+        initialiseStyles(this._container, this._settings);
+
+        if ((this._settings.data && this._settings.data.length > 0) || chart.plugin.type !== this._chart.plugin.type) {
+            this.remove();
+        }
         this.draw();
 
         if (window.navigator.userAgent.indexOf("Edge") > -1) {
@@ -47,8 +49,15 @@ class D3FCChartElement extends HTMLElement {
 
     draw() {
         if (this._settings.data) {
+            const containerDiv = d3.select(this._container);
+            const chartClass = `chart ${this._chart.plugin.type}`;
             this._settings.size = this._container.getBoundingClientRect();
-            this._chart(d3.select(this._container).attr("class", `chart ${this._chart.plugin.type}`), this._settings);
+
+            if (this._settings.data.length > 0) {
+                this._chart(containerDiv.attr("class", chartClass), this._settings);
+            } else {
+                containerDiv.attr("class", `${chartClass} disabled`);
+            }
         }
     }
 
@@ -68,11 +77,30 @@ class D3FCChartElement extends HTMLElement {
         return this._container;
     }
 
+    getSettings() {
+        const excludeSettings = ["crossValues", "mainValues", "splitValues", "filter", "data", "size", "colorStyles"];
+        const settings = {...this._settings};
+        excludeSettings.forEach(s => {
+            delete settings[s];
+        });
+        return settings;
+    }
+
+    setSettings(settings) {
+        this._settings = {...this._settings, ...settings};
+        this.draw();
+    }
+
     _configureSettings(oldSettings, newSettings) {
         if (oldSettings) {
+            if (!oldSettings.data) {
+                // Combine with the restored settings
+                return {...oldSettings, ...newSettings};
+            }
+
             const oldValues = [oldSettings.crossValues, oldSettings.mainValues, oldSettings.splitValues];
             const newValues = [newSettings.crossValues, newSettings.mainValues, newSettings.splitValues];
-            if (areArraysEqualSimple(oldValues, newValues)) return {...oldSettings, data: newSettings.data};
+            if (areArraysEqualSimple(oldValues, newValues)) return {...oldSettings, data: newSettings.data, colorStyles: null};
         }
         this.remove();
         return newSettings;

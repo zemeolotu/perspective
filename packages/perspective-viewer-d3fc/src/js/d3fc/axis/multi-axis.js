@@ -1,12 +1,11 @@
 import {select, line} from "d3";
-import {dataJoin, rebindAll, exclude} from "d3fc";
-import {axisOrdinalTop, axisOrdinalBottom, axisOrdinalLeft, axisOrdinalRight} from "./axisOrdinal";
-import store from "../chart/store";
+import {axisOrdinalTop, axisOrdinalBottom, axisOrdinalLeft, axisOrdinalRight, dataJoin, rebindAll, exclude} from "d3fc";
+import store from "./store";
 
 const multiAxis = (orient, baseAxis, scale) => {
     let tickSizeOuter = 6;
     let tickSizeInner = 6;
-    let axisStore = store("tickFormat", "ticks", "tickArguments", "tickValues", "tickPadding", "tickLineAlign");
+    let axisStore = store("tickFormat", "ticks", "tickArguments", "tickValues", "tickPadding");
     let decorate = () => {};
 
     let groups = null;
@@ -40,7 +39,12 @@ const multiAxis = (orient, baseAxis, scale) => {
 
             // add the domain line
             const range = scale.range();
-            const domainPathData = pathTranspose([[range[0], sign * tickSizeOuter], [range[0], 0], [range[1], 0], [range[1], sign * tickSizeOuter]]);
+            const domainPathData = pathTranspose([
+                [range[0], sign * tickSizeOuter],
+                [range[0], 0],
+                [range[1], 0],
+                [range[1], sign * tickSizeOuter]
+            ]);
 
             const domainLine = domainPathDataJoin(container, [data]);
             domainLine

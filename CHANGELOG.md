@@ -1,5 +1,202 @@
 # Changelog
 
+## [0.4.1] (2020-01-27)
+
+#### Fixed
+  * [#880](https://github.com/finos/perspective/pull/880) Fix `on_update` callbacks in Python ([@sc1f](https://github.com/sc1f))
+  * [#867](https://github.com/finos/perspective/pull/867) Time zone awareness in perspective-python ([@sc1f](https://github.com/sc1f))
+  * [#872](https://github.com/finos/perspective/pull/872) Improve `@finos/perspective-viewer` typings ([@zemeolotu](https://github.com/zemeolotu))
+  * [#868](https://github.com/finos/perspective/pull/868) Allow plugins to be importable before '`perspective-viewer` ([@zemeolotu](https://github.com/zemeolotu))
+  * [#866](https://github.com/finos/perspective/pull/866) Fix scrolling for pivoted hypergrid ([@sc1f](https://github.com/sc1f))
+
+## [0.4.0] (2020-01-07)
+#### Added
+  * [#850](https://github.com/finos/perspective/pull/850) Implement `to_arrow` in C++ for JS/Python ([@sc1f](https://github.com/sc1f))
+  * [#851](https://github.com/finos/perspective/pull/851) Exp bin functions ([@texodus](https://github.com/texodus))
+  * [#842](https://github.com/finos/perspective/pull/842) Add `selectable` attribute to `perspective-viewer` ([@zemeolotu](https://github.com/zemeolotu))
+  * [#846](https://github.com/finos/perspective/pull/846) `weighted mean` aggregate type ([@texodus](https://github.com/texodus))
+  * [#845](https://github.com/finos/perspective/pull/845) Theme `material-dense` ([@texodus](https://github.com/texodus))
+  * [#832](https://github.com/finos/perspective/pull/832) CSV/JSON renderer in JupyterLab ([@timkpaine](https://github.com/timkpaine))
+  * [#829](https://github.com/finos/perspective/pull/829) Read date32, date64, decimal128 from Arrow datasets ([@sc1f](https://github.com/sc1f))
+  * [#823](https://github.com/finos/perspective/pull/823) Add `delete()` to widget, cache client updates before render, refactor module structure ([@sc1f](https://github.com/sc1f))
+  * [#799](https://github.com/finos/perspective/pull/799) Allow for right master ([@timkpaine](https://github.com/timkpaine))
+  * [#765](https://github.com/finos/perspective/pull/765) Computed UX ([@texodus](https://github.com/texodus))
+  * [#695](https://github.com/finos/perspective/pull/695) Readable dates ([@texodus](https://github.com/texodus))
+
+#### Fixed
+  * [#854](https://github.com/finos/perspective/pull/854) Fix `perspective-viewer` to allow loading a table before it's attache… ([@zemeolotu](https://github.com/zemeolotu))
+  * [#853](https://github.com/finos/perspective/pull/853) Fix `perspective-jupyterlab` theme ([@zemeolotu](https://github.com/zemeolotu))
+  * [#848](https://github.com/finos/perspective/pull/848) Fixed resize behavior ([@texodus](https://github.com/texodus))
+  * [#835](https://github.com/finos/perspective/pull/835) Throttle fix ([@texodus](https://github.com/texodus))
+  * [#844](https://github.com/finos/perspective/pull/844) Node.js `table` unpin ([@texodus](https://github.com/texodus))
+  * [#838](https://github.com/finos/perspective/pull/838) Asynchronously process updates when running in Tornado ([@sc1f](https://github.com/sc1f))
+  * [#822](https://github.com/finos/perspective/pull/822) Properly remove `on_delete` and `on_update` callbacks that fail. ([@sc1f](https://github.com/sc1f))
+  * [#833](https://github.com/finos/perspective/pull/833) Preserve user columns and pivots in widget ([@sc1f](https://github.com/sc1f))
+  * [#821](https://github.com/finos/perspective/pull/821) Default to int64 in Python3, add `long` and `unicode` to schema and type inference ([@sc1f](https://github.com/sc1f))
+  * [#818](https://github.com/finos/perspective/pull/818) Fix misordered columns in update ([@sc1f](https://github.com/sc1f))
+  * [#831](https://github.com/finos/perspective/pull/831) Fix `PerspectiveWorkspace` when tabbed views are moved to master ([@zemeolotu](https://github.com/zemeolotu))
+
+#### Internal
+  * [#852](https://github.com/finos/perspective/pull/852) Add benchmark suite for Python, Refactor module loading for environments where C++ cannot be built  ([@sc1f](https://github.com/sc1f))
+  * [#852](https://github.com/finos/perspective/pull/852) Update versioning script for Python ([@sc1f](https://github.com/sc1f))
+  * [#839](https://github.com/finos/perspective/pull/839) Python build overhaul ([@timkpaine](https://github.com/timkpaine))
+  * [#836](https://github.com/finos/perspective/pull/836) Remove `ci_python` and refactor scripts. ([@texodus](https://github.com/texodus))
+  * [#834](https://github.com/finos/perspective/pull/834) Set Enums as values for Widget/Viewer, refactor test folder structure ([@sc1f](https://github.com/sc1f))
+  * [#840](https://github.com/finos/perspective/pull/840) Async resize ([@texodus](https://github.com/texodus))
+  * [#837](https://github.com/finos/perspective/pull/837) Improvements to Arrow updates and indexed columns ([@sc1f](https://github.com/sc1f))
+  * [#802](https://github.com/finos/perspective/pull/802) Tweak date/datetime inference, remove dependency on non-core Numpy/Pandas API ([@sc1f](https://github.com/sc1f))
+  * [#800](https://github.com/finos/perspective/pull/800) add websocket export in type definition ([@timkpaine](https://github.com/timkpaine))
+  * [#798](https://github.com/finos/perspective/pull/798) Add umd build and updated tests for `perspective-phosphor` ([@zemeolotu](https://github.com/zemeolotu))
+  * [#763](https://github.com/finos/perspective/pull/763) Python sdist  ([@timkpaine](https://github.com/timkpaine))
+  * [#778](https://github.com/finos/perspective/pull/778) Adjust setup.py for MacOS wheel dist ([@sc1f](https://github.com/sc1f))
+  * [#777](https://github.com/finos/perspective/pull/777) Add exception handling, clean up PSP_COMPLAIN_AND_ABORT ([@sc1f](https://github.com/sc1f))
+  * [#768](https://github.com/finos/perspective/pull/768) Upgrade Arrow to 0.15.0, link python arrow from prebuilt library ([@sc1f](https://github.com/sc1f))
+  * [#779](https://github.com/finos/perspective/pull/779) Fixes jupyterlab plugin regressions ([@texodus](https://github.com/texodus))
+  * [#766](https://github.com/finos/perspective/pull/766) Add tornado handler for perspective-python ([@sc1f](https://github.com/sc1f))
+
+#### Documentation
+  * [#847](https://github.com/finos/perspective/pull/847) add editable example to readme ([@timkpaine](https://github.com/timkpaine))
+  * [#820](https://github.com/finos/perspective/pull/820) Add PerspectiveWorkspace olympics example to README ([@zemeolotu](https://github.com/zemeolotu))
+  * [#819](https://github.com/finos/perspective/pull/819) Update Perspective website with Python API and user guide ([@sc1f](https://github.com/sc1f))
+
+[0.3.9] - 2019-09-16
+### Added
+* [#698](https://github.com/jpmorganchase/perspective/pull/698) Support for updating-by & querying implicitly indexed `table`s via `"__INDEX__"`.
+* [#699](https://github.com/jpmorganchase/perspective/pull/699) Adds `leaves_only` option for `to_*` methods.
+* [#700](https://github.com/jpmorganchase/perspective/pull/700) Charts now display the first-N point on overflow, rather than only warn.
+* [#715](https://github.com/jpmorganchase/perspective/pull/715) Editing support via the `editable` attribute, for `@finos/perspective-viewer-hypergrid`.
+  
+### Fixed
+* [#691](https://github.com/jpmorganchase/perspective/pull/691) Fix for reading batched arrows.
+* [#702](https://github.com/jpmorganchase/perspective/pull/702) Fix compatibility with ipywidgets.
+* [#703](https://github.com/jpmorganchase/perspective/pull/703) Fix attribtue API to be less noisy.
+* [#718](https://github.com/jpmorganchase/perspective/pull/718) Updated ES6 compat to remove regenerator dependency.
+
+### Internal
+* [#725](https://github.com/jpmorganchase/perspective/pull/725) `yarn setup` task for dev.
+
+[0.3.8] - 2019-08-26
+### Fixed
+* [#689](https://github.com/jpmorganchase/perspective/pull/689) Performance enchancements for `update()`.
+* [#690](https://github.com/jpmorganchase/perspective/pull/690) Ported to `llvm-upstream` branch fo Emscripten.
+
+[0.3.7] - 2019-08-20
+### Added
+* [#676](https://github.com/jpmorganchase/perspective/pull/676) Added null-filtering API and UI.
+* [#682](https://github.com/jpmorganchase/perspective/pull/676) Added type-specific styling API, with additional style properties for `@finos/perspective-viewer-hypergrid`.
+
+### Fixed
+* [#663](https://github.com/jpmorganchase/perspective/pull/663) Allow Apache Arrow inputs to optionally declare a schema.
+* [#666](https://github.com/jpmorganchase/perspective/pull/666) Fixed `@finos/persoective-viewer` aggregate persistence for computed columns.
+* [#669](https://github.com/jpmorganchase/perspective/pull/669) Fixed `@finos/persoective-viewer` filtering on null values.
+* [#675](https://github.com/jpmorganchase/perspective/pull/675) Fixed `@finos/persoective-jupyterlab` publish versioning.
+* [#672](https://github.com/jpmorganchase/perspective/pull/672) Fixed config parsing.
+* [#683](https://github.com/jpmorganchase/perspective/pull/683) Fixed D3FC version regression
+* [#684](https://github.com/jpmorganchase/perspective/pull/684) Fixed scatter chart click events.
+* [#685](https://github.com/jpmorganchase/perspective/pull/685) Fixed config performance issue.
+* [#686](https://github.com/jpmorganchase/perspective/pull/686) Fixed `@finos/persoective-viewer-hypergrid` click propagation issue.
+  
+[0.3.6] - 2019-07-15
+### Fixed
+* [#660](https://github.com/jpmorganchase/perspective/pull/660) Fixed webpack path resolution bug.
+  
+[0.3.5] - 2019-07-14
+### Added
+* [#644](https://github.com/jpmorganchase/perspective/pull/644) Global project config via `perspective.config.js`
+* [#639](https://github.com/jpmorganchase/perspective/pull/629) New perspective-viewer API.
+* [#641](https://github.com/jpmorganchase/perspective/pull/641) Simplified `@finos/perspective-webpack-plugin`.
+* [#650](https://github.com/jpmorganchase/perspective/pull/650) Resizable panels for `@finos/perspective-viewer`.
+  
+### Fixed
+* [#634](https://github.com/jpmorganchase/perspective/pull/634) Fixed node.js async load error.
+* [#635](https://github.com/jpmorganchase/perspective/pull/635) Fixed issue with multiple web workers.
+* [#649](https://github.com/jpmorganchase/perspective/pull/649) Fixed click event bug in `@finos/perspective-viewer-hypergrid`.
+* [#651](https://github.com/jpmorganchase/perspective/pull/651) Fixed issue pivotting on `null` values.
+
+[0.3.1] - 2019-06-25
+### Added
+* [#629](https://github.com/jpmorganchase/perspective/pull/629) asm.js/IE support removed.
+
+### Fixed
+* [#628](https://github.com/jpmorganchase/perspective/pull/628) Better memory utilization.
+* [#625](https://github.com/jpmorganchase/perspective/pull/625) Fixes to `perspective-phosphor`.
+
+[0.3.0] - 2019-06-02
+### Added
+* [#558](https://github.com/jpmorganchase/perspective/pull/558) `@jpmorganchase/perspective*` is now `@finos/perspective*`.
+* [#599](https://github.com/jpmorganchase/perspective/pull/599) `perspective-viewer-d3fc` is the default chart plugin.
+* [#574](https://github.com/jpmorganchase/perspective/pull/574) Auto-conflation of messages for `table()`.  `update()` and `on_update()` calls are no longer 1:1, but overall update throughput has been greatly increased.
+* [#589](https://github.com/jpmorganchase/perspective/pull/589) `on_update()` method now returns Apache Arrow with `mode: "row"` option, enabling full Arrow server->client real-time streaming.
+* [#563](https://github.com/jpmorganchase/perspective/pull/563) Treemaps added to `perspective-viewer-d3fc`.
+* [#564](https://github.com/jpmorganchase/perspective/pull/564) Dual-axis support added to `perspective-viewer-d3fc` line charts.
+* [#581](https://github.com/jpmorganchase/perspective/pull/581) Dual-axis support added to `perspective-viewer-d3fc` area, scatter and column charts.
+* [#553](https://github.com/jpmorganchase/perspective/pull/553) Added `style_element()` method to `<perspective-viewer>` to refresh styles when CSS is updated.
+* [#557](https://github.com/jpmorganchase/perspective/pull/557) Category filters on `<perspective-viewer>` now auto-select and auto-focus.
+
+### Fixed
+* [#561](https://github.com/jpmorganchase/perspective/pull/561) Handle `boolean` columns in Apache Arrow correctly.
+* [#580](https://github.com/jpmorganchase/perspective/pull/580) Better responsive layout for narrow `<perspective-viewer>`s.
+
+### Internal
+* [#587](https://github.com/jpmorganchase/perspective/pull/587) Port to Webpack 4.
+* [#588](https://github.com/jpmorganchase/perspective/pull/588) new stand-alone benchmarking tool `perspective-bench`.
+
+# [0.2.23] - 2019-04-22
+### Added
+* [#547](https://github.com/jpmorganchase/perspective/pull/547) Added `to_arrow()` support to remote perspective, as well as ability to host `view()`s in addition to `table()`s.
+* [#549](https://github.com/jpmorganchase/perspective/pull/549) Added table ownership flag to `perspective-viewer` `delete()` method.
+  
+### Fixed
+* [#542](https://github.com/jpmorganchase/perspective/pull/542) Fixed Hypergrid formatting issue when changing row-pivots.
+* [#544](https://github.com/jpmorganchase/perspective/pull/544) Fixed `save()` and `restore()` plugin method APIs.
+* [#546](https://github.com/jpmorganchase/perspective/pull/546) Fixed Hypergrid theme issue when page contains multiple themes.
+
+# [0.2.22] - 2019-04-10
+### Added
+* [#511](https://github.com/jpmorganchase/perspective/pull/511) Sunburst charts for `perspective-viewer-d3fc`, as well as support for perspective themes.
+* [#517](https://github.com/jpmorganchase/perspective/pull/517) Added `options` parameter to `view.on_update` method, and new `rows`, `none` and `pkey` update modes.
+* [#527](https://github.com/jpmorganchase/perspective/pull/527) Split `aggregate` view config option into `columns` and `aggregates` ala `<perspective-viewer>`, and named other properties like `row_pivots` consistently as well.  Old properties emit warnings.
+* [#531](https://github.com/jpmorganchase/perspective/pull/531) `perspective.table` can now be sorted by columns not in the `columns` list.
+* [#532](https://github.com/jpmorganchase/perspective/pull/532) Added `save()` and `restore()` methods to the `<perspective-viewer>` plugin API.
+* [#534](https://github.com/jpmorganchase/perspective/pull/534) Resizable Legends for `perspective-viewer-d3fc`, plus multiple bug fixes.
+
+### Fixed
+* [#521](https://github.com/jpmorganchase/perspective/pull/521) Fixed Hypergrid scroll stuttering on wide tables.
+* [#523](https://github.com/jpmorganchase/perspective/pull/523) Fixed row count on column-only pivots.
+* [#529](https://github.com/jpmorganchase/perspective/pull/529) Fixed column sorting regression.
+* [#538](https://github.com/jpmorganchase/perspective/pull/538) Fixed issue which caused Hypergrid to freeze when the column set changed during `update()`
+
+### Internal
+* [#537](https://github.com/jpmorganchase/perspective/pull/537) Upgraded Emscripten to 1.38.29 `perspective/emsdk:latest`.
+* [#539](https://github.com/jpmorganchase/perspective/pull/539) Upgraded Puppeteer `perspective/puppeteer:latest`.
+* [#520](https://github.com/jpmorganchase/perspective/pull/520) Updated `docs/` build and integrated into `master` branch.
+
+# [0.2.21] - 2019-04-03
+### Added
+* [#488](https://github.com/jpmorganchase/perspective/pull/488) Candlestick and OHLC charts for `perspective-viewer-d3fc`.
+* [#479](https://github.com/jpmorganchase/perspective/pull/479) Added zooming, label rotation and new scatter types to `perspective-viewer-d3fc`.
+* [#498](https://github.com/jpmorganchase/perspective/pull/498) Bollinger bands, moving averages, draggable legends for `perspective-viewer-d3fc`.
+* [#489](https://github.com/jpmorganchase/perspective/pull/489) Header sort indicator for `perspective-viewer-hypergrid`.
+* [#506](https://github.com/jpmorganchase/perspective/pull/506) Header click-to-sort for `perspective-viewer-hypergrid`, improved scroll performance.
+* [#516](https://github.com/jpmorganchase/perspective/pull/516) New `perspective-cli` package for convenient Perspective operations from the command line.
+* [#483](https://github.com/jpmorganchase/perspective/pull/483) Performance improvement for `perspective.to_*` methods.
+* [#485](https://github.com/jpmorganchase/perspective/pull/485) Added window support to `to_arrow()` method.
+* [#486](https://github.com/jpmorganchase/perspective/pull/486) Disabled delta calculation for `on_update` method by default, improving update performance.
+* [#503](https://github.com/jpmorganchase/perspective/pull/503) Added `get_config()` API to `perspective.table`.
+* [#512](https://github.com/jpmorganchase/perspective/pull/512) Column context labels are now configurable via the plugin API.
+
+### Fixed
+* [#478](https://github.com/jpmorganchase/perspective/pull/478) Fixed broken filtering on `date` type columns.
+* [#486](https://github.com/jpmorganchase/perspective/pull/486) Fixed un-pivoted `view.to_schema()` method to only show visible columns.
+* [#490](https://github.com/jpmorganchase/perspective/pull/490) Fixed bug which removed filter columns when dragged from active columns list.
+* [#491](https://github.com/jpmorganchase/perspective/pull/491) Fixed `perspective-webpack-plugin` load_path issue when `perspective-*` modules are not at the top-level of `node_modules`.
+* [#493](https://github.com/jpmorganchase/perspective/pull/493) Fixed `sum abs` aggregate type.
+* [#501](https://github.com/jpmorganchase/perspective/pull/501) Fixed pivot on categories containing nulls bug.
+* [#502](https://github.com/jpmorganchase/perspective/pull/502) Fixed expand/collapse on 2-sided contexts bug.
+
+### Internal
+* [#497](https://github.com/jpmorganchase/perspective/pull/497) Added local puppeteer mode for testing.
+  
 ## [0.2.20] - 2019-03-07
 ### Added
 * [#463](https://github.com/jpmorganchase/perspective/pull/463) D3FC plugin features Area and Heatmap charts, hierarchial axes have been added to all chart types, as well as a host of additioanl improvements.
@@ -15,7 +212,7 @@
 * [#468](https://github.com/jpmorganchase/perspective/pull/468) Perspective JS can now be built on Windows (with Docker).
 
 ## [0.2.19] - 2019-03-01
-### Fixes
+### Fixed
 * [#461](https://github.com/jpmorganchase/perspective/pull/461) Fixed click event bugs in `perspective-viewer-hypergrid` and `perspective-viewer-highcharts`
 
 ## [0.2.18] - 2019-02-27
@@ -23,7 +220,7 @@
 * [#420](https://github.com/jpmorganchase/perspective/pull/420) New plugin based on D3FC - `perspective-viewer-d3fc`.
 * [#439](https://github.com/jpmorganchase/perspective/pull/439) Added `perspective-click` event for all plugins, which in addition to the basic click details also generates the reciprocal filter matching the rows in any aggregate, such that `<perspective-viewer>`s can be linked.
 
-### Fixes
+### Fixed
 * [#445](https://github.com/jpmorganchase/perspective/pull/445) Fixed expand/collapse bug.
 * [#448](https://github.com/jpmorganchase/perspective/pull/448) Fixed 'Invalid Date' axis issue in `perspective-viewer-highcharts` plugin.
 * [#450](https://github.com/jpmorganchase/perspective/pull/450) Fixed `perspective-jupyterlab` plugin to inexplicably build to `dist/`.
@@ -36,7 +233,7 @@
 * [#435](https://github.com/jpmorganchase/perspective/pull/435) Added `to_arrow()` method to `view()` for writing Apache Arrow `ArrayBuffer`s.
 * [#436](https://github.com/jpmorganchase/perspective/pull/436) New module `perspective-phosphor`, which adds bindings for the Phosphor.js framework.
 
-### Fixes
+### Fixed
 * [#434](https://github.com/jpmorganchase/perspective/pull/434) Deprecated `[column]` sort syntax for `perspective` and `<perspective-viewer>`.
 
 ### Internal
@@ -44,7 +241,7 @@
 * [#413](https://github.com/jpmorganchase/perspective/pull/413) Moved structure of `view()` to C++.
 
 ## [0.2.15] - 2019-02-07
-### Fixes
+### Fixed
 * [#416](https://github.com/jpmorganchase/perspective/pull/416) Fixed highcharts bug which caused `null` groups to not render.
 * [#419](https://github.com/jpmorganchase/perspective/pull/419) Fixed regression in cross-origin loading.
 * [#421](https://github.com/jpmorganchase/perspective/pull/421) Fixed JSON/CSV loading when columns contain mixed numeric/string values.
@@ -53,7 +250,7 @@
 ### Added
 * [#408](https://github.com/jpmorganchase/perspective/pull/408) Added `flush()` method to `<perspective-viewer>`
 
-### Fixes
+### Fixed
 * [#409](https://github.com/jpmorganchase/perspective/pull/409) Fixed `perspective-webpack-plugin` conflicts with external loaders.
 
 ## [0.2.13] - 2019-02-04
@@ -61,7 +258,7 @@
 * [#399](https://github.com/jpmorganchase/perspective/pull/399) New package `perspective-webpack-plugin` for webpack integration
 * [#394](https://github.com/jpmorganchase/perspective/pull/394) Websocket server supports reconnects/heartbeat.
 
-### Fixes
+### Fixed
 * [#407](https://github.com/jpmorganchase/perspective/pull/407) Slightly better date parsing.
 * [#403](https://github.com/jpmorganchase/perspective/pull/403) Fixed webpack cross path loading.
 
@@ -71,7 +268,7 @@
 * [#381](https://github.com/jpmorganchase/perspective/pull/381) Perspective for C++ Linux, MacOS and Windows!
 * [#375](https://github.com/jpmorganchase/perspective/pull/375) Filter validation UX for `<perspective-viewer>`.
 
-### Fixes
+### Fixed
 * [#353](https://github.com/jpmorganchase/perspective/pull/353) Substantial performance improvements for CSV/JSON data loading.
 * [#355](https://github.com/jpmorganchase/perspective/pull/355) Reduced asset size & removed unnecesary abstraction.
 * [#357](https://github.com/jpmorganchase/perspective/pull/357) Removed regenerator plugin for smaller bundle & better performance.
@@ -89,7 +286,7 @@
 ### Added
 * [#345](https://github.com/jpmorganchase/perspective/pull/345) Direct load Apache Arrow support added to Jupyterlab plugin
 
-### Fixes
+### Fixed
 * [#343](https://github.com/jpmorganchase/perspective/pull/343) Fixed regression in type inference for empty string columns
 * [#344](https://github.com/jpmorganchase/perspective/pull/344) Fixed UI lock when invalid filters applied
 
@@ -97,7 +294,7 @@
 * [#350](https://github.com/jpmorganchase/perspective/pull/350) New benchmark suite
 
 ## [0.2.10] - 2018-12-09
-### Fixes
+### Fixed
 * [#328](https://github.com/jpmorganchase/perspective/pull/328) Fixed `<perspective-viewer>` `delete()` method memory leak.
 * [#338](https://github.com/jpmorganchase/perspective/pull/338) Fixed UI interaction quirks.
 
@@ -118,19 +315,19 @@
 * [#317](https://github.com/jpmorganchase/perspective/pull/317) Applying 'column-pivots' now preserves the sort order.
 * [#319](https://github.com/jpmorganchase/perspective/pull/319) Sorting by a column in 'column-pivots' will apply the sort to column order.
 
-### Fixes
+### Fixed
 * [#306](https://github.com/jpmorganchase/perspective/pull/306) Fixed Jupyterlab plugin, updating it to work with the newest [perspective-python 0.1.1](https://github.com/timkpaine/perspective-python/tree/v0.1.1).
 
 ## [0.2.7] - 2018-11-12
-### Fixes
+### Fixed
 * [#304](https://github.com/jpmorganchase/perspective/pull/304) Fixed missing file in NPM package.
 
 ## [0.2.6] - 2018-11-12
-### Fixes
+### Fixed
 * [#303](https://github.com/jpmorganchase/perspective/pull/303) Fixed `webpack-plugin` babel-loader configuration issue.
 
 ## [0.2.5] - 2018-11-09
-### Fixes
+### Fixed
 * [#301](https://github.com/jpmorganchase/perspective/pull/301) Fixed missing `webpack-plugin` export and `babel-polyfill` import.
 
 ## [0.2.4] - 2018-11-08
@@ -139,7 +336,7 @@
 * [#295](https://github.com/jpmorganchase/perspective/pull/295) `@jpmorganchase/perspective` now exports `wepback-plugin` for easy integration with WebPack, [example](https://github.com/jpmorganchase/perspective/blob/master/examples/webpack/webpack.config.js).  Webpacked builds are overall smaller as well. 
 * [#290](https://github.com/jpmorganchase/perspective/pull/290) Large aggregate datasets now trigger a render warning before attempting to render.
 
-### Fixes
+### Fixed
 * [#298](https://github.com/jpmorganchase/perspective/pull/298) Fixed Material dark theming readbility for hovers and dropdowns.
 
 ## [0.2.3] - 2018-10-25
@@ -150,7 +347,7 @@
 * [#284](https://github.com/jpmorganchase/perspective/pull/284) Updated Jupyterlab support to 0.35.x
 * [#287](https://github.com/jpmorganchase/perspective/pull/287) `restore()` is now a `Promise`.
   
-### Fixes
+### Fixed
 * [#280](https://github.com/jpmorganchase/perspective/pull/280) Fixed pivotting on columns with `null` values.
 * [#288](https://github.com/jpmorganchase/perspective/pull/288) Fixed issue which caused Hypergrid plugin to fail on empty or `schema` only data.
 * [#289](https://github.com/jpmorganchase/perspective/pull/289) Fixed issue which caused one-sided charts to not update when their axes grew.
@@ -170,7 +367,7 @@
 * Added support for chunked Arrows.
 * Added support/proper errors for un-decodeable strings.
   
-### Fixes
+### Fixed
 * Fixed a bug which de-registered updates when a computed column was added.
 * Fixed source-maps for Web Workers.
 * Fixed aggregate bug which caused partial updates without aggregate to incorrectly apply to aggregate.

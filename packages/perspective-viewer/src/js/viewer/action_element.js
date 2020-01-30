@@ -7,7 +7,7 @@
  *
  */
 
-import {undrag, column_undrag, column_dragleave, column_dragover, column_drop, drop, drag_enter, allow_drop, disallow_drop} from "./dragdrop.js";
+import {dragend, column_dragend, column_dragleave, column_dragover, column_drop, drop, dragenter, dragover, dragleave} from "./dragdrop.js";
 
 import {DomElement} from "./dom_element.js";
 
@@ -23,21 +23,35 @@ export class ActionElement extends DomElement {
         this.shadowRoot.querySelector("#app").classList.remove("show_menu");
     }
 
-    _toggle_config(event) {
+    async _toggle_config(event) {
         if (!event || event.button !== 2) {
-            if (this._show_config) {
-                this._side_panel.style.display = "none";
-                this._top_panel.style.display = "none";
-                this.removeAttribute("settings");
+            this._show_config = !this._show_config;
+            this._hide_context_menu();
+
+            if (!this._show_config) {
+                const panel = this.shadowRoot.querySelector("#pivot_chart_container");
+                this._datavis.style.width = `${panel.clientWidth + this._side_panel.clientWidth}px`;
+                this._datavis.style.height = `${panel.clientHeight + this._top_panel.clientHeight}px`;
+                try {
+                    await this._plugin.resize.call(this);
+                } finally {
+                    this._side_panel.style.display = "none";
+                    this._top_panel.style.display = "none";
+                    this._datavis.style.width = "100%";
+                    this._datavis.style.height = "100%";
+                    this.removeAttribute("settings");
+                    this.dispatchEvent(new CustomEvent("perspective-toggle-settings", {detail: this._show_config}));
+                }
             } else {
                 this._side_panel.style.display = "flex";
                 this._top_panel.style.display = "flex";
-                this.setAttribute("settings", true);
+                this.dispatchEvent(new CustomEvent("perspective-toggle-settings", {detail: this._show_config}));
+                try {
+                    await this._plugin.resize.call(this);
+                } finally {
+                    this.toggleAttribute("settings", true);
+                }
             }
-            this._show_config = !this._show_config;
-            this._plugin.resize.call(this, true);
-            this._hide_context_menu();
-            this.dispatchEvent(new CustomEvent("perspective-toggle-settings", {detail: this._show_config}));
         }
     }
 
@@ -162,78 +176,134 @@ export class ActionElement extends DomElement {
         this._debounce_update();
     }
 
-    _sort_order_clicked(event) {
-        event.target._increment_sort_order(this._get_view_column_pivots().length > 0, event.detail.shiftKey);
-        let sort = JSON.parse(this.getAttribute("sort"));
-        let new_sort = this._get_view_sorts();
-        for (let s of sort) {
-            let updated_sort = new_sort.find(x => x[0] === s[0]);
-            if (updated_sort) {
-                s[1] = updated_sort[1];
-            }
+    _increment_sort(sort, column_sorting, abs_sorting) {
+        let sort_orders = ["asc", "desc"];
+        if (column_sorting) {
+            sort_orders.push("col asc", "col desc");
         }
+        if (abs_sorting) {
+            sort_orders = sort_orders.map(x => `${x} abs`);
+        }
+        sort_orders.push("none");
+        return sort_orders[(sort_orders.indexOf(sort) + 1) % sort_orders.length];
+    }
+
+    _sort_order_clicked(event) {
+        const row = event.target;
+        const abs_sorting = event.detail.shiftKey && row.getAttribute("type") !== "string";
+        const new_sort_order = this._increment_sort(row.getAttribute("sort-order"), this._get_view_column_pivots().length > 0, abs_sorting);
+        row.setAttribute("sort-order", new_sort_order);
+
+        const sort = this._get_view_sorts();
         this.setAttribute("sort", JSON.stringify(sort));
     }
 
     // edits state
     _transpose() {
-        let row_pivots = this.getAttribute("row-pivots");
-        this.setAttribute("row-pivots", this.getAttribute("column-pivots"));
-        this.setAttribute("column-pivots", row_pivots);
+        const has_row = this.hasAttribute("row-pivots");
+        const has_col = this.hasAttribute("column-pivots");
+        if (has_row && has_col) {
+            let row_pivots = this.getAttribute("row-pivots");
+            this.setAttribute("row-pivots", this.getAttribute("column-pivots"));
+            this.setAttribute("column-pivots", row_pivots);
+        } else if (has_row) {
+            let row_pivots = this.getAttribute("row-pivots");
+            this.removeAttribute("row-pivots");
+            this.setAttribute("column-pivots", row_pivots);
+        } else if (has_col) {
+            let column_pivots = this.getAttribute("column-pivots");
+            this.removeAttribute("column-pivots");
+            this.setAttribute("row-pivots", column_pivots);
+        } else {
+            this.removeAttribute("column-pivots");
+            this.removeAttribute("row-pivots");
+        }
+    }
+
+    _reset_sidepanel() {
+        this._side_panel.style.width = "";
+    }
+
+    _resize_sidepanel(event) {
+        const initial = document.body.style.cursor;
+        document.body.style.cursor = "col-resize";
+        const start = event.clientX;
+        const width = this._side_panel.offsetWidth;
+        const resize = event => {
+            const new_width = Math.max(0, Math.min(width + (event.clientX - start), this.offsetWidth - 10));
+            this._side_panel.style.width = `${new_width}px`;
+            if (this._plugin) {
+                this.notifyResize();
+            }
+        };
+        const stop = () => {
+            document.body.style.cursor = initial;
+            document.removeEventListener("mousemove", resize);
+            document.removeEventListener("mouseup", stop);
+        };
+        document.addEventListener("mousemove", resize);
+        document.addEventListener("mouseup", stop);
+    }
+
+    _vis_selector_changed() {
+        this._plugin_information.classList.add("hidden");
+        this.setAttribute("plugin", this._vis_selector.value);
+        this._debounce_update();
     }
 
     // most of these are drag and drop handlers - how to clean up?
     _register_callbacks() {
         this._sort.addEventListener("drop", drop.bind(this));
-        this._sort.addEventListener("dragend", undrag.bind(this));
-        this._sort.addEventListener("dragenter", drag_enter.bind(this));
-        this._sort.addEventListener("dragover", allow_drop.bind(this));
-        this._sort.addEventListener("dragleave", disallow_drop.bind(this));
+        this._sort.addEventListener("dragend", dragend.bind(this));
+        this._sort.addEventListener("dragenter", dragenter.bind(this));
+        this._sort.addEventListener("dragover", dragover.bind(this));
+        this._sort.addEventListener("dragleave", dragleave.bind(this));
         this._row_pivots.addEventListener("drop", drop.bind(this));
-        this._row_pivots.addEventListener("dragend", undrag.bind(this));
-        this._row_pivots.addEventListener("dragenter", drag_enter.bind(this));
-        this._row_pivots.addEventListener("dragover", allow_drop.bind(this));
-        this._row_pivots.addEventListener("dragleave", disallow_drop.bind(this));
+        this._row_pivots.addEventListener("dragend", dragend.bind(this));
+        this._row_pivots.addEventListener("dragenter", dragenter.bind(this));
+        this._row_pivots.addEventListener("dragover", dragover.bind(this));
+        this._row_pivots.addEventListener("dragleave", dragleave.bind(this));
         this._column_pivots.addEventListener("drop", drop.bind(this));
-        this._column_pivots.addEventListener("dragend", undrag.bind(this));
-        this._column_pivots.addEventListener("dragenter", drag_enter.bind(this));
-        this._column_pivots.addEventListener("dragover", allow_drop.bind(this));
-        this._column_pivots.addEventListener("dragleave", disallow_drop.bind(this));
+        this._column_pivots.addEventListener("dragend", dragend.bind(this));
+        this._column_pivots.addEventListener("dragenter", dragenter.bind(this));
+        this._column_pivots.addEventListener("dragover", dragover.bind(this));
+        this._column_pivots.addEventListener("dragleave", dragleave.bind(this));
         this._filters.addEventListener("drop", drop.bind(this));
-        this._filters.addEventListener("dragend", undrag.bind(this));
-        this._filters.addEventListener("dragenter", drag_enter.bind(this));
-        this._filters.addEventListener("dragover", allow_drop.bind(this));
-        this._filters.addEventListener("dragleave", disallow_drop.bind(this));
+        this._filters.addEventListener("dragend", dragend.bind(this));
+        this._filters.addEventListener("dragenter", dragenter.bind(this));
+        this._filters.addEventListener("dragover", dragover.bind(this));
+        this._filters.addEventListener("dragleave", dragleave.bind(this));
         this._active_columns.addEventListener("drop", column_drop.bind(this));
-        this._active_columns.addEventListener("dragenter", drag_enter.bind(this));
-        this._active_columns.addEventListener("dragend", column_undrag.bind(this));
+        this._active_columns.addEventListener("dragenter", dragenter.bind(this));
+        this._active_columns.addEventListener("dragend", column_dragend.bind(this));
         this._active_columns.addEventListener("dragover", column_dragover.bind(this));
         this._active_columns.addEventListener("dragleave", column_dragleave.bind(this));
         this._add_computed_column.addEventListener("click", this._open_computed_column.bind(this));
         this._computed_column.addEventListener("perspective-computed-column-save", this._validate_computed_column.bind(this));
         this._computed_column.addEventListener("perspective-computed-column-update", this._set_computed_column_input.bind(this));
-        //this._side_panel.addEventListener('perspective-computed-column-edit', this._open_computed_column.bind(this));
+        // this._side_panel.addEventListener('
+        //     perspective-computed-column-edit',
+        //     this._open_computed_column.bind(this)
+        // );
         this._config_button.addEventListener("mousedown", this._toggle_config.bind(this));
         this._config_button.addEventListener("contextmenu", this._show_context_menu.bind(this));
         this._reset_button.addEventListener("click", this.reset.bind(this));
         this._copy_button.addEventListener("click", event => this.copy(event.shiftKey));
         this._download_button.addEventListener("click", event => this.download(event.shiftKey));
         this._transpose_button.addEventListener("click", this._transpose.bind(this));
-        this._drop_target.addEventListener("dragover", allow_drop.bind(this));
+        this._drop_target.addEventListener("dragover", dragover.bind(this));
+        this._resize_bar.addEventListener("mousedown", this._resize_sidepanel.bind(this));
+        this._resize_bar.addEventListener("dblclick", this._reset_sidepanel.bind(this));
 
-        this._vis_selector.addEventListener("change", () => {
-            this.setAttribute("view", this._vis_selector.value);
-            this._debounce_update();
-        });
+        this._vis_selector.addEventListener("change", this._vis_selector_changed.bind(this));
 
         this._plugin_information_action.addEventListener("click", () => {
-            this._debounce_update({ignore_size_check: true});
+            this._debounce_update({ignore_size_check: true, limit_points: false});
             this._plugin_information.classList.add("hidden");
         });
-        this._plugin_information_dismiss.addEventListener("click", () => {
-            this._debounce_update({ignore_size_check: true});
+
+        this._plugin_information_action_close.addEventListener("click", () => {
             this._plugin_information.classList.add("hidden");
-            this._show_warnings = false;
         });
     }
 }

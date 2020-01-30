@@ -16,7 +16,7 @@
 #include <perspective/sparse_tree_node.h>
 #include <perspective/traversal_nodes.h>
 #include <perspective/traversal.h>
-#include <perspective/table.h>
+#include <perspective/data_table.h>
 
 namespace perspective {
 
@@ -44,6 +44,7 @@ public:
     std::vector<t_tscalar> get_column_path_userspace(t_index idx) const;
 
     std::vector<t_aggspec> get_aggregates() const;
+    t_tscalar get_aggregate_name(t_uindex idx) const;
 
     void column_sort_by(const std::vector<t_sortspec>& sortby);
 
@@ -76,7 +77,6 @@ private:
     std::vector<t_sortspec> m_sortby;
     bool m_rows_changed;
     std::vector<std::shared_ptr<t_stree>> m_trees;
-    std::vector<t_sortspec> m_row_sortby;
     std::vector<t_sortspec> m_column_sortby;
     t_depth m_row_depth;
     bool m_row_depth_set;

@@ -20,12 +20,7 @@
 #include <functional>
 #include <limits>
 #include <cmath>
-#include <unordered_map>
-
-#ifdef PSP_ENABLE_PYTHON
-namespace py = boost::python;
-namespace np = boost::python::numpy;
-#endif
+#include <tsl/hopscotch_map.h>
 
 /*
 TODO -
@@ -200,7 +195,7 @@ public:
     void borrow_vocabulary(const t_column& o);
 
 #ifdef PSP_ENABLE_PYTHON
-    np::ndarray _as_numpy();
+    py::array _as_numpy();
 #endif
 
 private:

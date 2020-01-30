@@ -6,13 +6,14 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-import * as fc from "d3fc";
-import * as crossAxis from "../axis/crossAxis";
+import {axisFactory} from "../axis/axisFactory";
+import {AXIS_TYPES} from "../axis/axisType";
+import {chartSvgFactory} from "../axis/chartFactory";
 import {heatmapSeries} from "../series/heatmapSeries";
 import {seriesColorRange} from "../series/seriesRange";
 import {heatmapData} from "../data/heatmapData";
 import {filterData} from "../legend/filter";
-import {withGridLines} from "../gridlines/gridlines";
+import withGridLines from "../gridlines/gridlines";
 import {colorRangeLegend} from "../legend/colorRangeLegend";
 import zoomableChart from "../zoom/zoomableChart";
 
@@ -24,50 +25,34 @@ function heatmapChart(container, settings) {
 
     const legend = colorRangeLegend().scale(color);
 
-    const xDomain = crossAxis.domain(settings)(data);
-    const xScale = crossAxis.scale(settings);
-    const xAxis = crossAxis.axisFactory(settings).domain(xDomain)();
-
-    const yDomain = crossAxis
-        .domain(settings)
+    const xAxis = axisFactory(settings)
+        .excludeType(AXIS_TYPES.linear)
+        .settingName("crossValues")
+        .valueName("crossValue")(data);
+    const yAxis = axisFactory(settings)
+        .excludeType(AXIS_TYPES.linear)
         .settingName("splitValues")
-        .valueName("mainValue")(data)
-        .reverse();
-    const yScale = crossAxis.scale(settings, "splitValues");
-    const yAxis = crossAxis
-        .axisFactory(settings)
-        .settingName("splitValues")
-        .orient("vertical")
-        .domain(yDomain)();
+        .valueName("mainValue")
+        .orient("vertical")(data);
 
-    const chart = fc
-        .chartSvgCartesian({
-            xScale,
-            yScale,
-            xAxis,
-            yAxis
-        })
-        .xDomain(xDomain)
-        .xLabel(crossAxis.label(settings))
-        .xAxisHeight(xAxis.size)
-        .xDecorate(xAxis.decorate)
-        .yDomain(yDomain)
-        .yLabel(crossAxis.label(settings, "splitValues"))
-        .yAxisWidth(yAxis.size)
-        .yDecorate(yAxis.decorate)
-        .yOrient("left")
-        .plotArea(withGridLines(series));
+    const chart = chartSvgFactory(xAxis, yAxis).plotArea(withGridLines(series, settings));
 
-    chart.xPaddingInner && chart.xPaddingInner(0);
-    chart.xPaddingOuter && chart.xPaddingOuter(0);
-    chart.yPaddingInner && chart.yPaddingInner(0);
-    chart.yPaddingOuter && chart.yPaddingOuter(0);
+    if (chart.xPaddingInner) {
+        chart.xPaddingInner(0);
+        chart.xPaddingOuter(0);
+        series.xAlign("right");
+    }
+    if (chart.yPaddingInner) {
+        chart.yPaddingInner(0);
+        chart.yPaddingOuter(0);
+        series.yAlign("top");
+    }
 
     const zoomChart = zoomableChart()
         .chart(chart)
         .settings(settings)
-        .xScale(xScale)
-        .yScale(yScale);
+        .xScale(xAxis.scale)
+        .yScale(yAxis.scale);
 
     // render
     container.datum(data).call(zoomChart);
@@ -75,8 +60,9 @@ function heatmapChart(container, settings) {
 }
 heatmapChart.plugin = {
     type: "d3_heatmap",
-    name: "[d3fc] Heatmap",
-    max_size: 25000
+    name: "Heatmap",
+    max_cells: 1000,
+    max_columns: 50
 };
 
 export default heatmapChart;

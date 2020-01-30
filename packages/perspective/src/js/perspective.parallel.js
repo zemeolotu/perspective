@@ -6,31 +6,26 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-import WebsocketHeartbeatJs from "websocket-heartbeat-js";
-import * as defaults from "./defaults.js";
 
-import {worker} from "./api.js";
+import * as defaults from "./config/constants.js";
+import {get_config} from "./config";
+import {Client} from "./api/client.js";
 
-import asmjs_worker from "./perspective.asmjs.js";
 import wasm_worker from "./perspective.wasm.js";
-
 import wasm from "./psp.async.wasm.js";
+import {override_config} from "../../dist/esm/config/index.js";
 
-/******************************************************************************
- *
- * Utilities
- *
- */
+const HEARTBEAT_TIMEOUT = 15000;
 
-// https://github.com/kripken/emscripten/issues/6042
-function detect_iphone() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-}
+// eslint-disable-next-line max-len
+const INLINE_WARNING = `Perspective has been compiled in INLINE mode.  While Perspective's runtime performance is not affected, you may see smaller assets size and faster engine initial load time using "@finos/perspective-webpack-plugin" to build your application.
+
+https://perspective.finos.org/docs/md/installation.html#-an-important-note-about-hosting`;
 
 /**
  * Singleton WASM file download cache.
  */
-const override = new class {
+const override = new (class {
     _fetch(url) {
         return new Promise(resolve => {
             let wasmXHR = new XMLHttpRequest();
@@ -43,46 +38,64 @@ const override = new class {
         });
     }
 
-    set({wasm, worker}) {
-        this._wasm = wasm || this._wasm;
-        this._worker = worker || this._worker;
-    }
-
     worker() {
-        return (this._worker || wasm_worker)();
+        return wasm_worker();
     }
 
     async wasm() {
-        if (!this._wasm) {
+        if (wasm instanceof ArrayBuffer) {
+            console.warn(INLINE_WARNING);
+            this._wasm = wasm;
+        } else {
             this._wasm = await this._fetch(wasm);
         }
         return this._wasm;
     }
-}();
+})();
 
-class WebWorker extends worker {
-    constructor() {
+/**
+ * WebWorker extends Perspective's `worker` class and defines interactions using
+ * the WebWorker API.
+ *
+ * This class serves as the client API for transporting messages to/from Web
+ * Workers.
+ */
+class WebWorkerClient extends Client {
+    constructor(config) {
+        if (config) {
+            override_config(config);
+        }
         super();
         this.register();
     }
 
+    /**
+     * When the worker is created, load either the ASM or WASM bundle depending
+     * on WebAssembly compatibility.  Don't use transferrable so multiple
+     * workers can be instantiated.
+     */
     async register() {
-        let worker;
-        const msg = {cmd: "init"};
-        if (typeof WebAssembly === "undefined" || detect_iphone()) {
-            worker = await asmjs_worker();
+        let _worker;
+        const msg = {cmd: "init", config: get_config()};
+        if (typeof WebAssembly === "undefined") {
+            throw new Error("WebAssembly not supported. Support for ASM.JS has been removed as of 0.3.1.");
         } else {
-            [worker, msg.buffer] = await Promise.all([override.worker(), override.wasm()]);
+            [_worker, msg.buffer] = await Promise.all([override.worker(), override.wasm()]);
         }
         for (var key in this._worker) {
-            worker[key] = this._worker[key];
+            _worker[key] = this._worker[key];
         }
-        this._worker = worker;
+        this._worker = _worker;
         this._worker.addEventListener("message", this._handle.bind(this));
-        this._worker.postMessage(msg, [msg.buffer]);
+        this._worker.postMessage(msg);
         this._detect_transferable();
     }
 
+    /**
+     * Send a message from the worker, using transferables if necessary.
+     *
+     * @param {*} msg
+     */
     send(msg) {
         if (this._worker.transferable && msg.args && msg.args[0] instanceof ArrayBuffer) {
             this._worker.postMessage(msg, msg.args);
@@ -108,22 +121,48 @@ class WebWorker extends worker {
     }
 }
 
-class WebSocketWorker extends worker {
+/**
+ * Given a WebSocket URL, connect to the socket located at `url`.
+ *
+ * The `onmessage` handler receives incoming messages and sends it to the
+ * WebWorker through `this._handle`.
+ *
+ * If the message has a transferable asset, set the `pending_arrow` flag to tell
+ * the worker the next message is an ArrayBuffer.
+ */
+class WebSocketClient extends Client {
     constructor(url) {
         super();
-        this._ws = new WebsocketHeartbeatJs({
-            url,
-            pingTimeout: 15000,
-            pingMsg: "heartbeat"
-        });
+        this._ws = new WebSocket(url);
+        this._ws.binaryType = "arraybuffer";
         this._ws.onopen = () => {
             this.send({id: -1, cmd: "init"});
         };
+        const heartbeat = () => {
+            this._ws.send("heartbeat");
+            setTimeout(heartbeat, HEARTBEAT_TIMEOUT);
+        };
+        setTimeout(heartbeat, 15000);
         this._ws.onmessage = msg => {
             if (msg.data === "heartbeat") {
                 return;
             }
-            this._handle({data: JSON.parse(msg.data)});
+            if (this._pending_arrow) {
+                this._handle({data: {id: this._pending_arrow, data: msg.data}});
+                delete this._pending_arrow;
+            } else {
+                msg = JSON.parse(msg.data);
+
+                // If the `is_transferable` flag is set, the worker expects the
+                // next message to be a transferable object. This sets the
+                // `_pending_arrow` flag, which triggers a special handler for
+                // the ArrayBuffer containing arrow data.
+                if (msg.is_transferable) {
+                    this._pending_arrow = msg.id;
+                } else {
+                    this._handle({data: msg});
+                }
+            }
         };
     }
 
@@ -143,17 +182,26 @@ class WebSocketWorker extends worker {
  */
 
 const WORKER_SINGLETON = (function() {
-    let __WORKER__;
+    let __WORKER__, __CONFIG__;
     return {
-        getInstance: function() {
+        getInstance: function(config) {
             if (__WORKER__ === undefined) {
-                __WORKER__ = new WebWorker();
+                __WORKER__ = new WebWorkerClient(config);
             }
+            const config_str = JSON.stringify(config);
+            if (__CONFIG__ && config_str !== __CONFIG__) {
+                throw new Error(`Confiuration object for shared_worker() has changed - this is probably a bug in your application.`);
+            }
+            __CONFIG__ = config_str;
             return __WORKER__;
         }
     };
 })();
 
+/**
+ * If Perspective is loaded with the `preload` attribute, pre-initialize the
+ * worker so it is available at page render.
+ */
 if (document.currentScript && document.currentScript.hasAttribute("preload")) {
     WORKER_SINGLETON.getInstance();
 }
@@ -161,16 +209,26 @@ if (document.currentScript && document.currentScript.hasAttribute("preload")) {
 const mod = {
     override: x => override.set(x),
 
-    worker(url) {
-        if (url) {
-            return new WebSocketWorker(url);
-        } else {
-            return new WebWorker();
-        }
+    /**
+     * Create a new WebWorkerClient instance. s
+     * @param {*} [config] An optional perspective config object override
+     */
+    worker(config) {
+        return new WebWorkerClient(config);
     },
 
-    shared_worker() {
-        return WORKER_SINGLETON.getInstance();
+    /**
+     * Create a new WebSocketClient instance. The `url` parameter is provided,
+     * load the worker at `url` using a WebSocket. s
+     * @param {*} url Defaults to `window.location.origin`
+     * @param {*} [config] An optional perspective config object override
+     */
+    websocket(url = window.location.origin.replace("http", "ws")) {
+        return new WebSocketClient(url);
+    },
+
+    shared_worker(config) {
+        return WORKER_SINGLETON.getInstance(config);
     }
 };
 

@@ -6,182 +6,101 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-/**************************/
-/* perspective components */
-import "@jpmorganchase/perspective-viewer";
-import "@jpmorganchase/perspective-viewer-hypergrid";
-import "@jpmorganchase/perspective-viewer-highcharts";
 
-import { Message } from '@phosphor/messaging';
-import { Widget } from '@phosphor/widgets';
-import { MIME_TYPE, PSP_CLASS, PSP_CONTAINER_CLASS, PSP_CONTAINER_CLASS_DARK } from './utils';
-import { Schema, TableOptions } from '@jpmorganchase/perspective';
-import { PerspectiveViewer } from '@jpmorganchase/perspective-viewer';
+/* eslint-disable @typescript-eslint/camelcase */
+
+import "@finos/perspective-viewer";
+
+import {Table, TableData, TableOptions} from "@finos/perspective";
+import {Message} from "@phosphor/messaging";
+import {Widget} from "@phosphor/widgets";
+import {MIME_TYPE, PSP_CLASS, PSP_CONTAINER_CLASS, PSP_CONTAINER_CLASS_DARK} from "./utils";
+
+import {HTMLPerspectiveViewerElement, Pivots, Aggregates, Sort, ComputedColumns, PerspectiveViewerOptions, Filters, Columns} from "@finos/perspective-viewer";
 
 let _increment = 0;
 
-export type PerspectiveWidgetOptions = {
-    datasrc?: string;
-    data?: any;
-    schema?: { [colname: string]: string };
-    view?: string;
-    columns?: string[];
-    rowpivots?: string[];
-    columnpivots?: string[];
-    aggregates?: { [colname: string]: string };
-    sort?: string[];
-    index?: string;
-    limit?: number;
-    computedcolumns?: { [colname: string]: string }[];
-    settings?: boolean;
-    embed?: boolean;
+export interface PerspectiveWidgetOptions extends PerspectiveViewerOptions {
     dark?: boolean;
+    client?: boolean;
+    title?: string;
     bindto?: HTMLElement;
-    key?: string;
-    wrap?: boolean;
-    delete_?: boolean;
-}
+    plugin_config?: PerspectiveViewerOptions;
 
+    // these shouldn't exist, PerspectiveViewerOptions should be sufficient e.g.
+    // ["row-pivots"]
+    column_pivots?: Pivots;
+    row_pivots?: Pivots;
+    computed_columns?: ComputedColumns;
+}
 
 /**
  * Class for perspective phosphor widget.
  *
- * @class      PerspectiveWidget (name)
- * @param {options} options object consisting of the fields below
- * @param {string} name - Name of phosphor widget
- * @param {string} datasrc - type of datasrc, either '' for json or 'pyarrow' for arrow TODO
- * @param {{[colname: string]: string}} schema - Perspective schema to load
- * @param {string} view - PerspectiveViewer view type
- * @param {string[]} columns - Columns to show
- * @param {string[]} rowpivots - Row pivots to use
- * @param {string[]} columnpivots - Column pivots to use
- * @param {{[colname: string]: string}} aggregates - Aggregates to apply to pivoted data
- * @param {string[]} sort - sort by these [column, {'asc', 'dsc',...}]
- * @param {string} index - Primary key column name
- * @param {number} limit - limit to this many records
- * @param {{[colname: string]: string}[]} computedcolumns - Computed columns to use
- * @param {boolean} settings - show settings 
- * @param {boolean} embed - Embed mode TODO
- * @param {boolean} dark - use dark CSS
- * @param {HTMLElement} bindto - bind to this dom element (otherwise will use div)
- * @param {string} key - index object data by key
- * @param {boolean} wrap - wrap data in list
- * @param {boolean} delete_ - delete existing data on new data
+ * @class PerspectiveWidget (name) TODO: document
  */
-export
-    class PerspectiveWidget extends Widget {
-    constructor(name: string = 'Perspective',
-        options: PerspectiveWidgetOptions = {}) {
-        super({ node: options.bindto || document.createElement('div') });
-        this._psp = Private.createNode(this.node as HTMLDivElement);
+export class PerspectiveWidget extends Widget {
+    constructor(name = "Perspective", options: PerspectiveWidgetOptions = {}) {
+        super({node: options.bindto || document.createElement("div")});
+        this._viewer = PerspectiveWidget.createNode(this.node as HTMLDivElement);
 
         this.title.label = name;
         this.title.caption = `${name}`;
         this.id = `${name}-` + _increment;
         _increment += 1;
 
-        this._load(options);
-    }
-
-
-    /***********/
-    /* Getters */
-    /***********/
-
-    /**
-     * getter for underlying PerspectiveViewer
-     *
-     * @return     {PerspectiveViewer}  { underlying PerspectiveViewer instance }
-     */
-    get pspNode(): PerspectiveViewer {
-        return this._psp;
+        this._set_attributes(options);
     }
 
     /**
-     * getter for name
+     * Apply user-provided options to the widget.
      *
-     * @return     {string}  {name of the widget}
+     * @param options
      */
-    get name(): string {
-        return this.title.label;
-    }
+    _set_attributes(options: PerspectiveWidgetOptions): void {
+        const plugin: string = options.plugin || "hypergrid";
+        const columns: Columns = options.columns || [];
+        const row_pivots: Pivots = options.row_pivots || options["row-pivots"] || [];
+        const column_pivots: Pivots = options.column_pivots || options["column-pivots"] || [];
+        const aggregates: Aggregates = options.aggregates || {};
+        const sort: Sort = options.sort || [];
+        const filters: Filters = options.filters || [];
+        const computed_columns: ComputedColumns = options.computed_columns || options["computed-columns"] || [];
+        const plugin_config: PerspectiveViewerOptions = options.plugin_config || {};
+        const dark: boolean = options.dark || false;
+        const editable: boolean = options.editable || false;
+        const client: boolean = options.client || false;
+        const selectable: boolean = options.selectable || false;
 
-    _load(options: PerspectiveWidgetOptions) {
-        let data: any = options.data || [];
-        this._data = data;
-
-        let datasrc: string = options.datasrc || '';
-        let schema: { [colname: string]: string } = options.schema || {};
-        let view: string = options.view || 'hypergrid';
-        let columns: string[] = options.columns || [];
-        let rowpivots: string[] = options.rowpivots || [];
-        let columnpivots: string[] = options.columnpivots || [];
-        let aggregates: { [colname: string]: string } = options.aggregates || {};
-        let sort: string[] = options.sort || [];
-        let index: string = options.index || '';
-        let limit: number = options.limit || -1;
-        let computedcolumns: { [colname: string]: string }[] = options.computedcolumns || [];
-        let settings: boolean = options.settings || false;
-        let embed: boolean = options.embed || false;
-        let dark: boolean = options.dark || false;
-        let key: string = options.key || '';
-        let wrap: boolean = options.wrap || false;
-        let delete_: boolean = options.delete_ || true;
-
-        this.settings = settings;
+        this.client = client;
         this.dark = dark;
-        this._schema = schema; // dont trigger setter
-        this.view = view;
-        this.rowpivots = rowpivots;
-        this.columnpivots = columnpivots;
+        this.editable = editable;
+        this.plugin = plugin;
+        this.plugin_config = plugin_config;
+        this.row_pivots = row_pivots;
+        this.column_pivots = column_pivots;
         this.sort = sort;
         this.columns = columns;
-        this.index = index;
-        this.limit = limit;
-        this.embed = embed;
+        this.selectable = selectable;
 
         // do aggregates after columns
         this.aggregates = aggregates;
 
-        //always last
-        this.datasrc = datasrc;
-
         // do computed last
-        this.computedcolumns = computedcolumns;
-
-        this._key = key;
-        this._wrap = wrap;
-        this._delete = delete_;
+        this.computed_columns = computed_columns;
+        this.filters = filters;
     }
 
     /**********************/
     /* Phosphor Overrides */
     /**********************/
-    /**
-     * Phospor: Called when phosphor widget is destroyed
-     *
-     */
-    dispose(): void {
-        this.delete();
-        super.dispose();
-    }
-
-    /**
-     * Phosphor: onAfterAttach to dom
-     *
-     */
-    onAfterAttach(msg: Message): void {
-        this.pspNode.notifyResize();
-        super.onAfterAttach(msg);
-    }
-
 
     /**
      * Phosphor: after visible
      *
      */
     onAfterShow(msg: Message): void {
-        this.pspNode.notifyResize();
+        this.notifyResize();
         super.onAfterShow(msg);
     }
 
@@ -190,242 +109,216 @@ export
      *
      */
     onResize(msg: Widget.ResizeMessage): void {
-        this.pspNode.notifyResize();
+        this.notifyResize();
         super.onResize(msg);
     }
 
     protected onActivateRequest(msg: Message): void {
         if (this.isAttached) {
-            this.pspNode.focus();
+            this.viewer.focus();
         }
         super.onActivateRequest(msg);
     }
 
-    /***********************/
-    /* PSP Integration     */
-    /***********************/
-    /**
-     * delete underlying perspective table
-     *
-     */
-    delete(): void {
-        this.pspNode.delete();
+    async notifyResize(): Promise<void> {
+        if (this.isVisible) {
+            await this.viewer.notifyResize();
+        }
+    }
+
+    save(): PerspectiveViewerOptions {
+        return this.viewer.save();
+    }
+
+    restore(config: PerspectiveViewerOptions): Promise<void> {
+        return this.viewer.restore(config);
     }
 
     /**
-     * other non-phosphor resizes
+     * Load either a `perspective.table` into the viewer.
      *
+     * @param table a `perspective.table` object.
      */
-    notifyResize(): void {
-        this.pspNode.notifyResize();
+    load(table: TableData | Table, options?: TableOptions): void {
+        this.viewer.load(table, options);
     }
 
     /**
-     * underlying data has changed, reinitialize perspective-viewer
+     * Update the viewer with new data.
+     *
+     * @param data
+     */
+    _update(data: TableData): void {
+        this.viewer.update(data);
+    }
+
+    /**
+     * Removes all rows from the viewer's table. Does not reset viewer state.
+     */
+    clear(): void {
+        this.viewer.clear();
+    }
+
+    /**
+     * Replaces the data of the viewer's table with new data. New data must
+     * conform to the schema of the Table.
+     *
+     * @param data
+     */
+    replace(data: TableData): void {
+        this.viewer.replace(data);
+    }
+
+    /**
+     * Deletes this element's data and clears it's internal state (but not its
+     * user state). This (or the underlying `perspective.table`'s equivalent
+     * method) must be called in order for its memory to be reclaimed.
+     *
+     * If not running in client mode, delete_table defaults to false and the
+     * server should handle memory cleanup.
+     *
+     * @param {boolean} delete_table Whether `delete()` should be called on the
+     * underlying `Table`.
+     */
+    delete(delete_table = true) {
+        this.viewer.delete(delete_table || this.client);
+    }
+
+    get table(): Table {
+        return this.viewer.table;
+    }
+
+    /******************************************************************************
+     *
+     * Getters
      *
      */
-    _render(): void {
-        /*****************/
-        /* Arrow Loading */
-        /*****************/
-        if (this.datasrc === 'arrow') { // or other binary formats
-            if (this._delete) {
-                this.delete();
-            }
 
-            let data = this.data;
+    /**
+     * Returns the underlying `PerspectiveViewer` instance.
+     *
+     * @returns {PerspectiveViewer} The widget's viewer instance.
+     */
+    get viewer(): HTMLPerspectiveViewerElement {
+        return this._viewer;
+    }
 
-            if (Object.keys(this.schema).length > 0) {
-                let limit = this.limit;
-                let index = this.index;
-                let options = {} as { [key: string]: any };
+    /**
+     * Returns the name of the widget.
+     *
+     * @returns {string} the widget name - "Perspective" if not set by the user.
+     */
+    get name(): string {
+        return this.title.label;
+    }
 
-                if (limit > 0) {
-                    options['limit'] = limit;
-                }
-                if (index) {
-                    options['index'] = index;
-                }
+    /**
+     * The name of the plugin which visualizes the data in `PerspectiveViewer`.
+     *
+     */
+    get plugin(): string {
+        return this.viewer.getAttribute("plugin");
+    }
+    set plugin(plugin: string) {
+        this.viewer.setAttribute("plugin", plugin);
+    }
 
-                this.pspNode.load(this.schema as Schema, options as TableOptions);
-            }
-            if (data) {
-                this.pspNode.load(data.buffer);
-            }
-            /*****************/
+    /**
+     * The column names that are displayed in the viewer's grid/visualizations.
+     *
+     * If a column in the dataset is not in this array, it is not shown but can
+     * be used for aggregates, sort, and filter.
+     */
+    get columns(): Columns {
+        return JSON.parse(this.viewer.getAttribute("columns"));
+    }
+    set columns(columns: Columns) {
+        if (columns.length > 0) {
+            this.viewer.setAttribute("columns", JSON.stringify(columns));
         } else {
-            /****************/
-            /* JSON Loading */
-            /****************/
-            if (this._delete) {
-                this.delete();
-            }
-
-            let data;
-            if (this._key) {
-                data = this.data[this._key];
-            } else {
-                data = this.data;
-            }
-
-            if (Object.keys(this.schema).length > 0) {
-                let limit = this.limit;
-                let index = this.index;
-                let options = {} as { [key: string]: any };
-
-                if (limit > 0) {
-                    options['limit'] = limit;
-                }
-                if (index) {
-                    options['index'] = index;
-                }
-
-                this.pspNode.load(this.schema as Schema, options as TableOptions);
-            }
-            if (data.length > 0) {
-                if (this._wrap) {
-                    this.pspNode.update([data]);
-                } else {
-                    this.pspNode.update(data);
-                }
-            } else {
-                console.warn('Perspective received length 0 data');
-            }
-            /****************/
+            this.viewer.removeAttribute("columns");
         }
     }
 
-    get data() { return this._data; }
-    /**
-     * change underlying json data
-     *
-     * @param      {any}  data    The data to load
-     */
-    set data(data: any) {
-        this._data = data;
+    get row_pivots(): Pivots {
+        return JSON.parse(this.viewer.getAttribute("row-pivots"));
+    }
+    set row_pivots(row_pivots: Pivots) {
+        this.viewer.setAttribute("row-pivots", JSON.stringify(row_pivots));
     }
 
-
-    /**
-     * get datasrc
-     *
-     * @return     {string}  { data source type }
-     */
-    get datasrc() { return this._datasrc; }
-
-    /**
-     * Change datasrc between '' (json) and 'arrow' (arrow) data
-     *
-     * @param      {any}  datasrc  The datasrc to configure for
-     */
-    set datasrc(datasrc: string) {
-        this.delete();
-        this._datasrc = datasrc
+    get column_pivots(): Pivots {
+        return JSON.parse(this.viewer.getAttribute("column-pivots"));
+    }
+    set column_pivots(column_pivots: Pivots) {
+        this.viewer.setAttribute("column-pivots", JSON.stringify(column_pivots));
     }
 
-    /**
-     * get schema
-     *
-     * @return     {{[colname: string]: string}}  { schema value }
-     */
-    get schema() { return this._schema; }
-
-    /**
-     * set schema
-     *
-     * @param      {{[colname: string]: string}}  schema   The schema to set
-     */
-    set schema(schema: { [colname: string]: string }) {
-        this._schema = schema;
+    get aggregates(): Aggregates {
+        return JSON.parse(this.viewer.getAttribute("aggregates"));
+    }
+    set aggregates(aggregates: Aggregates) {
+        this.viewer.setAttribute("aggregates", JSON.stringify(aggregates));
     }
 
-    get view() { return this._view; }
-    set view(view: string) {
-        this._view = view;
-        this.pspNode.setAttribute('view', this._view);
+    get sort(): Sort {
+        return JSON.parse(this.viewer.getAttribute("sort"));
+    }
+    set sort(sort: Sort) {
+        this.viewer.setAttribute("sort", JSON.stringify(sort));
     }
 
-    get columns() { return this._columns; }
-    set columns(columns: string[]) {
-        this._columns = columns;
-        if (this._columns.length > 0) {
-            this.pspNode.setAttribute('columns', JSON.stringify(this._columns));
+    get computed_columns(): ComputedColumns {
+        return JSON.parse(this.viewer.getAttribute("computed-columns"));
+    }
+    set computed_columns(computed_columns: ComputedColumns) {
+        if (computed_columns.length > 0) {
+            this.viewer.setAttribute("computed-columns", JSON.stringify(computed_columns));
         } else {
-            this.pspNode.removeAttribute('columns');
+            this.viewer.removeAttribute("computed-columns");
         }
     }
 
-    get rowpivots() { return this._rowpivots; }
-    set rowpivots(rowpivots: string[]) {
-        this._rowpivots = rowpivots;
-        this.pspNode.setAttribute('row-pivots', JSON.stringify(this._rowpivots));
+    get filters(): Filters {
+        return JSON.parse(this.viewer.getAttribute("filters"));
     }
-
-    get columnpivots() { return this._columnpivots; }
-    set columnpivots(columnpivots: string[]) {
-        this._columnpivots = columnpivots;
-        this.pspNode.setAttribute('column-pivots', JSON.stringify(this._columnpivots));
-    }
-
-    get aggregates() { return this._aggregates; }
-    set aggregates(aggregates: { [colname: string]: string }) {
-        this._aggregates = aggregates;
-        this.pspNode.setAttribute('aggregates', JSON.stringify(this._aggregates));
-    }
-
-    get sort() { return this._sort; }
-    set sort(sort: string[]) {
-        this._sort = sort;
-        this.pspNode.setAttribute('sort', JSON.stringify(this._sort));
-    }
-
-    get index() { return this._index; }
-    set index(index: string) {
-        this._index = index;
-        if (this._index) {
-            this.pspNode.setAttribute('index', JSON.stringify(this._index));
+    set filters(filters: Filters) {
+        if (filters.length > 0) {
+            this.viewer.setAttribute("filters", JSON.stringify(filters));
         } else {
-            this.pspNode.removeAttribute('index');
+            this.viewer.removeAttribute("filters");
         }
     }
 
-    get computedcolumns() { return this._computedcolumns; }
-    set computedcolumns(computedcolumns: { [colname: string]: string }[]) {
-        this._computedcolumns = computedcolumns;
-        if (this._computedcolumns.length > 0) {
-            this.pspNode.setAttribute('computed-columns', JSON.stringify(this._computedcolumns));
-        } else {
-            this.pspNode.removeAttribute('computed-columns');
+    get plugin_config(): PerspectiveViewerOptions {
+        return this._plugin_config;
+    }
+    set plugin_config(plugin_config: PerspectiveViewerOptions) {
+        this._plugin_config = plugin_config;
+        if (this._plugin_config) {
+            this.viewer.restore(this._plugin_config);
         }
     }
 
-    get limit() { return this._limit; }
-    set limit(limit: number) {
-        this._limit = limit;
-        if (this._limit > 0) {
-            this.pspNode.setAttribute('limit', this._limit.toString());
-        } else {
-            this.pspNode.removeAttribute('limit');
-        }
+    /**
+     * True if the widget is in client-only mode, i.e. the browser has ownership
+     * of the widget's data.
+     */
+    get client(): boolean {
+        return this._client;
+    }
+    set client(client: boolean) {
+        this._client = client;
     }
 
-    get settings() { return this._settings; }
-    set settings(settings: boolean) {
-        this._settings = settings;
-        this.pspNode.setAttribute('settings', this._settings.toString());
+    /**
+     * Enable or disable dark mode by re-rendering the viewer.
+     */
+    get dark(): boolean {
+        return this._dark;
     }
-
-    get embed() { return this._embed; }
-    set embed(embed: boolean) {
-        this._embed = embed
-        if (this._embed) {
-            console.log('Warning: embed not implemented');
-        }
-    }
-
-    get dark() { return this._dark; }
     set dark(dark: boolean) {
-        this._dark = dark
+        this._dark = dark;
         if (this._dark) {
             this.node.classList.add(PSP_CONTAINER_CLASS_DARK);
             this.node.classList.remove(PSP_CONTAINER_CLASS);
@@ -433,68 +326,66 @@ export
             this.node.classList.add(PSP_CONTAINER_CLASS);
             this.node.classList.remove(PSP_CONTAINER_CLASS_DARK);
         }
+        if (this.isAttached) {
+            this.viewer.restyleElement();
+        }
     }
 
-    private _data: any = [];
+    get editable(): boolean {
+        return this._editable;
+    }
+    set editable(editable: boolean) {
+        this._editable = editable;
+        if (this._editable) {
+            this.viewer.setAttribute("editable", "");
+        } else {
+            this.viewer.removeAttribute("editable");
+        }
+    }
 
-    private _psp: PerspectiveViewer;
-    private _datasrc: string;
-    private _schema: { [colname: string]: string };
-    private _view: string;
-    private _columns: string[];
-    private _rowpivots: string[];
-    private _columnpivots: string[];
-    private _aggregates: { [colname: string]: string };
-    private _sort: string[];
-    private _index: string;
-    private _limit: number;
-    private _computedcolumns: { [colname: string]: string }[];
+    get selectable(): boolean {
+        return this.viewer.hasAttribute("selectable");
+    }
 
-    private _settings: boolean;
-    private _embed: boolean;
-    private _dark: boolean;
+    set selectable(row_selection: boolean) {
+        if (row_selection) {
+            this.viewer.setAttribute("selectable", "");
+        } else {
+            this.viewer.removeAttribute("selectable");
+        }
+    }
 
-    private _key: string;
-    private _wrap: boolean;
-    private _delete: boolean;
-}
+    toggleConfig(): void {
+        this._viewer.toggleConfig();
+    }
 
-
-namespace Private {
-    export let _loaded = false;
-
-    export function createNode(node: HTMLDivElement): PerspectiveViewer {
-        node.classList.add('p-Widget');
+    static createNode(node: HTMLDivElement): HTMLPerspectiveViewerElement {
+        node.classList.add("p-Widget");
         node.classList.add(PSP_CONTAINER_CLASS);
-        let psp = (document.createElement('perspective-viewer') as any) as PerspectiveViewer;
-        psp.classList.add(PSP_CLASS);
-        psp.setAttribute('type', MIME_TYPE);
+        const viewer = document.createElement("perspective-viewer");
+        viewer.classList.add(PSP_CLASS);
+        viewer.setAttribute("type", MIME_TYPE);
 
         while (node.lastChild) {
             node.removeChild(node.lastChild);
         }
 
-        node.appendChild(psp);
+        node.appendChild(viewer);
 
         // allow perspective's event handlers to do their work
-        psp.addEventListener('contextmenu', stop, false);
+        viewer.addEventListener("contextmenu", event => event.stopPropagation(), false);
 
-        function stop(event: MouseEvent) {
-            event.stopPropagation();
-        }
-
-        let div = document.createElement('div');
-        div.style.setProperty('display', 'flex');
-        div.style.setProperty('flex-direction', 'row');
+        const div = document.createElement("div");
+        div.style.setProperty("display", "flex");
+        div.style.setProperty("flex-direction", "row");
         node.appendChild(div);
 
-
-        if (!psp.notifyResize) {
-            console.warn('Warning: not bound to real element');
-        } else {
-            let observer = new MutationObserver(psp.notifyResize.bind(psp));
-            observer.observe(node, { attributes: true });
-        }
-        return psp;
+        return viewer;
     }
+
+    private _viewer: HTMLPerspectiveViewerElement;
+    private _plugin_config: PerspectiveViewerOptions;
+    private _client: boolean;
+    private _dark: boolean;
+    private _editable: boolean;
 }

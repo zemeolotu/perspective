@@ -7,8 +7,6 @@
  *
  */
 
-import detectIE from "detectie";
-
 /**
  * Instantiate a Template DOM object from an HTML text string.
  *
@@ -54,18 +52,19 @@ export function registerElement(templateString, styleString, proto) {
     if (styleString) {
         template.innerHTML = `<style>${styleString.toString()}</style>` + template.innerHTML;
     }
-    window.ShadyCSS && window.ShadyCSS.prepareTemplate(template, template.getAttribute("id"));
+    template.innerHTML = `<style id="psp_styles" scope="${template.getAttribute("id")}">test{}</style>` + template.innerHTML;
 
     const _perspective_element = class extends proto {
         attributeChangedCallback(name, old, value) {
+            if (value === null) {
+                value = "null";
+            }
             if (name[0] !== "_" && old != value) {
                 this[name] = value;
             }
         }
 
         connectedCallback() {
-            window.ShadyCSS && window.ShadyCSS.styleElement(this);
-
             if (this._initialized) {
                 return;
             }
@@ -106,7 +105,7 @@ export function registerElement(templateString, styleString, proto) {
         if (descriptor && descriptor.set) {
             let old = descriptor.set;
             descriptor.set = function(val) {
-                if (this.getAttribute(key) !== val) {
+                if (!this.hasAttribute(key) || this.getAttribute(key) !== val) {
                     this.setAttribute(key, val);
                     return;
                 }
@@ -142,24 +141,22 @@ export function bindTemplate(template, ...styleStrings) {
  */
 function _attribute(_default) {
     return function(cls, name, desc) {
-        const old_set = desc.set;
+        const old_set = desc.value;
         desc.set = function(x) {
             let attr = this.getAttribute(name);
             try {
-                if (x === null || x === undefined) {
+                if (x === null || x === undefined || x === "") {
                     x = _default();
                 }
                 if (typeof x !== "string") {
                     x = JSON.stringify(x);
                 }
                 if (x !== attr) {
-                    this.setAttribute(name, x);
                     attr = x;
-                    return;
                 }
                 attr = JSON.parse(attr);
             } catch (e) {
-                console.error(`Invalid value for attribute "${name}": ${x}`);
+                console.warn(`Invalid value for attribute "${name}": ${x}`);
                 attr = _default();
             }
             old_set.call(this, attr);
@@ -167,8 +164,12 @@ function _attribute(_default) {
         desc.get = function() {
             if (this.hasAttribute(name)) {
                 return JSON.parse(this.getAttribute(name));
+            } else {
+                return _default();
             }
         };
+        delete desc["value"];
+        delete desc["writable"];
         return desc;
     };
 }
@@ -182,34 +183,62 @@ export function copy_to_clipboard(csv) {
     document.body.removeChild(element);
 }
 
+/**
+ * Just like `setTimeout` except it returns a promise which resolves after the
+ * callback has (also resolved).
+ *
+ * @param {func} cb
+ * @param {*} timeout
+ */
+export async function setPromise(cb = async () => {}, timeout = 0) {
+    await new Promise(x => setTimeout(x, timeout));
+    return await cb();
+}
+
+const invertPromise = () => {
+    let resolve;
+    let promise = new Promise(_resolve => {
+        resolve = _resolve;
+    });
+    promise.resolve = resolve;
+    return promise;
+};
+
+export function throttlePromise(target, property, descriptor) {
+    const lock = Symbol("private lock");
+    const f = descriptor.value;
+    descriptor.value = async function(...args) {
+        if (this[lock]) {
+            await this[lock];
+            if (this[lock]) {
+                await this[lock];
+                return;
+            }
+        }
+        this[lock] = invertPromise();
+        let result;
+        try {
+            result = await f.call(this, ...args);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            const l = this[lock];
+            this[lock] = undefined;
+            l.resolve();
+            return result;
+        }
+    };
+    return descriptor;
+}
+
 export const json_attribute = _attribute(() => ({}));
 export const array_attribute = _attribute(() => []);
 
-function get(url) {
-    return new Promise(resolve => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", url, true);
-        xhr.onload = () => resolve(xhr.responseText);
-        xhr.send(null);
-    });
-}
-
-async function load_themes() {
-    const themes = document.head.querySelectorAll("link[is=custom-style]");
-    for (let theme of themes) {
-        const url = theme.getAttribute("href");
-        console.log(`Loading theme ${url} asynchronously due to IE`);
-        const css = await get(url);
-        window.ShadyCSS.CustomStyleInterface.addCustomStyle({
-            getStyle() {
-                const style = document.createElement("style");
-                style.textContent = css;
-                return style;
-            }
-        });
+export const registerPlugin = (name, plugin) => {
+    if (global.registerPlugin) {
+        global.registerPlugin(name, plugin);
+    } else {
+        global.__perspective_plugins__ = global.__perspective_plugins__ || [];
+        global.__perspective_plugins__.push([name, plugin]);
     }
-}
-
-if (detectIE()) {
-    window.addEventListener("load", load_themes);
-}
+};

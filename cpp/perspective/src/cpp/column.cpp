@@ -14,13 +14,7 @@ SUPPRESS_WARNINGS_VC(4505)
 #include <perspective/defaults.h>
 #include <perspective/base.h>
 #include <perspective/sym_table.h>
-#include <unordered_set>
-
-#ifdef PSP_ENABLE_PYTHON
-namespace py = boost::python;
-namespace np = boost::python::numpy;
-#include <perspective/numpy.h>
-#endif
+#include <tsl/hopscotch_set.h>
 
 namespace perspective {
 // TODO : move to delegated constructors in C++11
@@ -695,7 +689,7 @@ t_column::clear() {
 void
 t_column::pprint() const {
     for (t_uindex idx = 0, loop_end = size(); idx < loop_end; ++idx) {
-        std::cout << idx << " => " << get_scalar(idx) << std::endl;
+        std::cout << idx << ": " << get_scalar(idx) << std::endl;
     }
 }
 
@@ -922,7 +916,7 @@ t_column::borrow_vocabulary(const t_column& o) {
 }
 
 #ifdef PSP_ENABLE_PYTHON
-np::ndarray
+py::array
 t_column::_as_numpy() {
     if (is_vlen_dtype(m_dtype))
         return m_data->_as_numpy(DTYPE_UINT64);

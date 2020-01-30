@@ -21,7 +21,7 @@
 #include <perspective/filter_utils.h>
 #include <queue>
 #include <tuple>
-#include <unordered_set>
+#include <tsl/hopscotch_set.h>
 
 namespace perspective {
 
@@ -42,8 +42,7 @@ t_ctx_grouped_pkey::init() {
     auto pivots = m_config.get_row_pivots();
     m_tree = std::make_shared<t_stree>(pivots, m_config.get_aggregates(), m_schema, m_config);
     m_tree->init();
-    m_traversal
-        = std::shared_ptr<t_traversal>(new t_traversal(m_tree, m_config.handle_nan_sort()));
+    m_traversal = std::shared_ptr<t_traversal>(new t_traversal(m_tree));
     m_minmax = std::vector<t_minmax>(m_config.get_num_aggregates());
     m_init = true;
 }
@@ -176,8 +175,9 @@ t_ctx_grouped_pkey::get_data(
 }
 
 void
-t_ctx_grouped_pkey::notify(const t_table& flattened, const t_table& delta, const t_table& prev,
-    const t_table& current, const t_table& transitions, const t_table& existed) {
+t_ctx_grouped_pkey::notify(const t_data_table& flattened, const t_data_table& delta,
+    const t_data_table& prev, const t_data_table& current, const t_data_table& transitions,
+    const t_data_table& existed) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     rebuild();
@@ -308,7 +308,7 @@ t_ctx_grouped_pkey::get_pkeys(const std::vector<std::pair<t_uindex, t_uindex>>& 
 
     std::vector<t_tscalar> rval;
 
-    std::unordered_set<t_uindex> seen;
+    tsl::hopscotch_set<t_uindex> seen;
 
     for (const auto& c : cells) {
         auto ptidx = m_traversal->get_tree_index(c.first);
@@ -444,8 +444,7 @@ t_ctx_grouped_pkey::reset() {
     m_tree = std::make_shared<t_stree>(pivots, m_config.get_aggregates(), m_schema, m_config);
     m_tree->init();
     m_tree->set_deltas_enabled(get_feature_state(CTX_FEAT_DELTA));
-    m_traversal
-        = std::shared_ptr<t_traversal>(new t_traversal(m_tree, m_config.handle_nan_sort()));
+    m_traversal = std::shared_ptr<t_traversal>(new t_traversal(m_tree));
 }
 
 void
@@ -531,7 +530,7 @@ t_ctx_grouped_pkey::rebuild() {
     auto pkey_col = tbl->get_const_column("psp_pkey").get();
 
     std::vector<t_datum> data(nrows);
-    std::unordered_map<t_tscalar, t_uindex> child_ridx_map;
+    tsl::hopscotch_map<t_tscalar, t_uindex> child_ridx_map;
     std::vector<bool> self_pkey_eq(nrows);
 
     for (t_uindex idx = 0; idx < nrows; ++idx) {
@@ -575,7 +574,7 @@ t_ctx_grouped_pkey::rebuild() {
         ++nroot_children;
     }
 
-    std::unordered_map<t_tscalar, std::pair<t_uindex, t_uindex>> p_range_map;
+    tsl::hopscotch_map<t_tscalar, std::pair<t_uindex, t_uindex>> p_range_map;
 
     t_uindex brange = nroot_children;
     for (t_uindex idx = nroot_children; idx < nrows; ++idx) {
@@ -588,7 +587,7 @@ t_ctx_grouped_pkey::rebuild() {
     p_range_map[data.back().m_parent] = std::pair<t_uindex, t_uindex>(brange, nrows);
 
     // map from unsorted space to sorted space
-    std::unordered_map<t_uindex, t_uindex> sortidx_map;
+    tsl::hopscotch_map<t_uindex, t_uindex> sortidx_map;
 
     for (t_uindex idx = 0; idx < nrows; ++idx) {
         sortidx_map[data[idx].m_idx] = idx;
@@ -660,8 +659,7 @@ t_ctx_grouped_pkey::rebuild() {
     );
 #endif
 
-    m_traversal
-        = std::shared_ptr<t_traversal>(new t_traversal(m_tree, m_config.handle_nan_sort()));
+    m_traversal = std::shared_ptr<t_traversal>(new t_traversal(m_tree));
 
     set_expansion_state(expansion_state);
 
@@ -678,7 +676,7 @@ t_ctx_grouped_pkey::pprint() const {
 }
 
 void
-t_ctx_grouped_pkey::notify(const t_table& flattened) {
+t_ctx_grouped_pkey::notify(const t_data_table& flattened) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     psp_log_time(repr() + " notify.enter");

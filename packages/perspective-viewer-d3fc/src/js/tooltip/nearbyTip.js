@@ -11,6 +11,7 @@ import * as fc from "d3fc";
 import {tooltip} from "./tooltip";
 import {withOpacity} from "../series/seriesColors.js";
 import {findBestFromData} from "../data/findBest";
+import {raiseEvent} from "./selectionEvent";
 
 export default () => {
     const base = tooltip().alwaysShow(true);
@@ -23,24 +24,33 @@ export default () => {
     let data = null;
     let xValueName = "crossValue";
     let yValueName = "mainValue";
+    let altDataWithScale = null;
 
     function nearbyTip(selection) {
         const chartPlotArea = `d3fc-${canvas ? "canvas" : "svg"}.plot-area`;
         if (xScale || yScale) {
+            let tooltipData = null;
             const pointer = fc.pointer().on("point", event => {
-                const tooltipData = event.length ? [getClosestDataPoint(event[0])] : [];
+                const closest = event.length ? getClosestDataPoint(event[0]) : null;
+                tooltipData = closest ? [closest.data] : [];
+                const useYScale = closest ? closest.scale : yScale;
 
-                renderTip(selection, tooltipData);
+                renderTip(selection, tooltipData, useYScale);
             });
 
             selection
                 .select(chartPlotArea)
                 .on("measure.nearbyTip", () => renderTip(selection, []))
+                .on("click", () => {
+                    if (tooltipData.length) {
+                        raiseEvent(selection.node(), tooltipData[0], base.settings());
+                    }
+                })
                 .call(pointer);
         }
     }
 
-    const renderTip = (selection, tipData) => {
+    const renderTip = (selection, tipData, useYScale = yScale) => {
         const tips = selection
             .select("d3fc-svg.plot-area svg")
             .selectAll("circle.nearbyTip")
@@ -52,7 +62,7 @@ export default () => {
             .attr("class", "nearbyTip")
             .merge(tips)
             .attr("r", d => (size ? Math.sqrt(size(d.size)) : 10))
-            .attr("transform", d => `translate(${xScale(d[xValueName])},${yScale(d[yValueName])})`)
+            .attr("transform", d => `translate(${xScale(d[xValueName])},${useYScale(d[yValueName])})`)
             .style("stroke", "none")
             .style("fill", d => color && withOpacity(color(d.key)));
 
@@ -60,15 +70,25 @@ export default () => {
     };
 
     const getClosestDataPoint = pos => {
-        return findBestFromData(
-            data,
-            v => {
+        const distFn = scale => {
+            return v => {
                 if (v[yValueName] === undefined || v[yValueName] === null || v[xValueName] === undefined || v[xValueName] === null) return null;
 
-                return Math.sqrt(Math.pow(xScale(v[xValueName]) - pos.x, 2) + Math.pow(yScale(v[yValueName]) - pos.y, 2));
-            },
-            Math.min
-        );
+                return Math.sqrt(Math.pow(xScale(v[xValueName]) - pos.x, 2) + Math.pow(scale(v[yValueName]) - pos.y, 2));
+            };
+        };
+
+        // Check the main data
+        const dist1 = distFn(yScale);
+        const best1 = findBestFromData(data, dist1, Math.min);
+
+        if (altDataWithScale) {
+            // Check the alt data with its scale, to see if any are closer
+            const dist2 = distFn(altDataWithScale.yScale);
+            const best2 = findBestFromData(altDataWithScale.data, dist2, Math.min);
+            return dist1(best1) <= dist2(best2) ? {data: best1, scale: yScale} : {data: best2, scale: altDataWithScale.yScale};
+        }
+        return {data: best1, scale: yScale};
     };
 
     nearbyTip.xScale = (...args) => {
@@ -132,6 +152,14 @@ export default () => {
             return yValueName;
         }
         yValueName = args[0];
+        return nearbyTip;
+    };
+
+    nearbyTip.altDataWithScale = (...args) => {
+        if (!args.length) {
+            return altDataWithScale;
+        }
+        altDataWithScale = args[0];
         return nearbyTip;
     };
 

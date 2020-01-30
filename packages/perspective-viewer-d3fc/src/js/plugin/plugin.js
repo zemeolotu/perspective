@@ -7,7 +7,9 @@
  *
  */
 
+import {registerPlugin} from "@finos/perspective-viewer/dist/esm/utils.js";
 import charts from "../charts/charts";
+import "./polyfills/index";
 import "./template";
 
 export const PRIVATE = Symbol("D3FC chart");
@@ -20,56 +22,61 @@ const DEFAULT_PLUGIN_SETTINGS = {
     selectMode: "select"
 };
 
-charts.forEach(chart => {
-    global.registerPlugin(chart.plugin.type, {
-        ...DEFAULT_PLUGIN_SETTINGS,
-        ...chart.plugin,
-        create: drawChart(chart),
-        resize: resizeChart,
-        delete: deleteChart
+export function register(...plugins) {
+    plugins = new Set(plugins.length > 0 ? plugins : charts.map(chart => chart.plugin.type));
+    charts.forEach(chart => {
+        if (plugins.has(chart.plugin.type)) {
+            registerPlugin(chart.plugin.type, {
+                ...DEFAULT_PLUGIN_SETTINGS,
+                ...chart.plugin,
+                create: drawChart(chart),
+                resize: resizeChart,
+                delete: deleteChart,
+                save,
+                restore
+            });
+        }
     });
-});
+}
 
 function drawChart(chart) {
-    return async function(el, view, task) {
-        // FIXME: super tight coupling to private viewer methods
-        const row_pivots = this._get_view_row_pivots();
-        const col_pivots = this._get_view_column_pivots();
-        const aggregates = this._get_view_aggregates();
-        const hidden = this._get_view_hidden(aggregates);
+    return async function(el, view, task, end_col, end_row) {
+        let jsonp;
 
-        const [tschema, json] = await Promise.all([this._table.schema(), view.to_json()]);
+        if (end_col && end_row) {
+            jsonp = view.to_json({end_row, end_col, leaves_only: true});
+        } else if (end_col) {
+            jsonp = view.to_json({end_col, leaves_only: true});
+        } else if (end_row) {
+            jsonp = view.to_json({end_row, leaves_only: true});
+        } else {
+            jsonp = view.to_json({leaves_only: true});
+        }
+
+        let [tschema, schema, json, config] = await Promise.all([this._table.schema(false, false), view.schema(false), jsonp, view.get_config()]);
+
         if (task.cancelled) {
             return;
         }
 
+        const {columns, row_pivots, column_pivots, filter} = config;
         const filtered = row_pivots.length > 0 ? json.filter(col => col.__ROW_PATH__ && col.__ROW_PATH__.length == row_pivots.length) : json;
-        const dataMap = !row_pivots.length ? (col, i) => ({...removeHiddenData(col, hidden), __ROW_PATH__: [i]}) : col => removeHiddenData(col, hidden);
+        const dataMap = (col, i) => (!row_pivots.length ? {...col, __ROW_PATH__: [i]} : col);
+        const mapped = filtered.map(dataMap);
 
         let settings = {
             crossValues: row_pivots.map(r => ({name: r, type: tschema[r]})),
-            mainValues: aggregates.map(a => ({name: a.column, type: tschema[a.column]})),
-            splitValues: col_pivots.map(r => ({name: r, type: tschema[r]})),
-            data: filtered.map(dataMap)
+            mainValues: columns.map(a => ({name: a, type: schema[a]})),
+            splitValues: column_pivots.map(r => ({name: r, type: tschema[r]})),
+            filter,
+            data: mapped
         };
 
         createOrUpdateChart.call(this, el, chart, settings);
     };
 }
 
-function removeHiddenData(col, hidden) {
-    if (hidden && hidden.length > 0) {
-        Object.keys(col).forEach(key => {
-            const labels = key.split("|");
-            if (hidden.includes(labels[labels.length - 1])) {
-                delete col[key];
-            }
-        });
-    }
-    return col;
-}
-
-function createOrUpdateChart(div, chart, settings) {
+function getOrCreatePluginElement() {
     let perspective_d3fc_element;
     this[PRIVATE] = this[PRIVATE] || {};
     if (!this[PRIVATE].chart) {
@@ -77,6 +84,11 @@ function createOrUpdateChart(div, chart, settings) {
     } else {
         perspective_d3fc_element = this[PRIVATE].chart;
     }
+    return perspective_d3fc_element;
+}
+
+function createOrUpdateChart(div, chart, settings) {
+    const perspective_d3fc_element = getOrCreatePluginElement.call(this);
 
     if (!document.body.contains(perspective_d3fc_element)) {
         div.innerHTML = "";
@@ -98,4 +110,20 @@ function deleteChart() {
         const perspective_d3fc_element = this[PRIVATE].chart;
         perspective_d3fc_element.delete();
     }
+}
+
+function save() {
+    if (this[PRIVATE] && this[PRIVATE].chart) {
+        const perspective_d3fc_element = this[PRIVATE].chart;
+        return perspective_d3fc_element.getSettings();
+    }
+}
+
+function restore(config) {
+    const perspective_d3fc_element = getOrCreatePluginElement.call(this);
+    perspective_d3fc_element.setSettings(config);
+}
+
+if (!Element.prototype.matches) {
+    Element.prototype.matches = Element.prototype.msMatchesSelector;
 }

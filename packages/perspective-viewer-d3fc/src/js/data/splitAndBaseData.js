@@ -6,7 +6,7 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-import {labelFunction} from "../axis/crossAxis";
+import {labelFunction} from "../axis/axisLabel";
 
 export function splitAndBaseData(settings, data) {
     const labelfn = labelFunction(settings);
@@ -29,7 +29,8 @@ export function splitAndBaseData(settings, data) {
                     key,
                     crossValue: labelfn(col, i),
                     mainValue: value,
-                    baseValue: baseValue
+                    baseValue: baseValue,
+                    row: col
                 };
             });
     });

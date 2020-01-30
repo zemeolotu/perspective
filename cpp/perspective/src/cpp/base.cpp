@@ -11,13 +11,24 @@
 #include <perspective/base.h>
 #include <cstdint>
 #include <limits>
+#ifdef PSP_ENABLE_WASM
+#include <emscripten.h>
+#else
+#include <perspective/exception.h>
+#endif
 
 namespace perspective {
 
 void
-psp_abort() {
-    std::cerr << "abort()" << std::endl;
-    std::raise(SIGINT);
+psp_abort(const std::string& message) {
+#ifdef PSP_ENABLE_WASM
+    std::cerr << "Abort(): " << message << std::endl;
+    EM_ASM({
+        throw new Error('abort()');
+    });
+#else
+    throw PerspectiveException(message.c_str());
+#endif
 }
 
 bool
@@ -69,6 +80,7 @@ is_floating_point(t_dtype dtype) {
 bool
 is_deterministic_sized(t_dtype dtype) {
     switch (dtype) {
+        case DTYPE_OBJECT:
         case DTYPE_PTR:
         case DTYPE_INT64:
         case DTYPE_UINT64:
@@ -97,6 +109,7 @@ is_deterministic_sized(t_dtype dtype) {
 t_uindex
 get_dtype_size(t_dtype dtype) {
     switch (dtype) {
+        case DTYPE_OBJECT:
         case DTYPE_PTR: {
             return sizeof(void*);
         }
@@ -216,6 +229,9 @@ get_dtype_descr(t_dtype dtype) {
         case DTYPE_F64PAIR: {
             return "f64pair";
         } break;
+        case DTYPE_OBJECT: {
+            return "object";
+        }
         default: { PSP_COMPLAIN_AND_ABORT("Encountered unknown dtype"); }
     }
     return std::string("dummy");
@@ -223,34 +239,66 @@ get_dtype_descr(t_dtype dtype) {
 
 std::string
 dtype_to_str(t_dtype dtype) {
-    std::stringstream str_dtype;
+    std::stringstream ss;
     switch (dtype) {
         case DTYPE_FLOAT32:
         case DTYPE_FLOAT64: {
-            str_dtype << "float";
+            ss << "float";
         } break;
+        case DTYPE_UINT8:
+        case DTYPE_UINT16:
+        case DTYPE_UINT32:
+        case DTYPE_UINT64:
         case DTYPE_INT8:
         case DTYPE_INT16:
-        case DTYPE_INT32:
+        case DTYPE_INT32: 
         case DTYPE_INT64: {
-            str_dtype << "integer";
+            ss << "integer";
         } break;
         case DTYPE_BOOL: {
-            str_dtype << "boolean";
+            ss << "boolean";
         } break;
         case DTYPE_DATE: {
-            str_dtype << "date";
+            ss << "date";
         } break;
         case DTYPE_TIME: {
-            str_dtype << "datetime";
+            ss << "datetime";
         } break;
         case DTYPE_STR: {
-            str_dtype << "string";
+            ss << "string";
+        } break;
+        case DTYPE_OBJECT: {
+            ss << "object";
+        } break;
+        case DTYPE_NONE: {
+            ss << "none";
         } break;
         default: { PSP_COMPLAIN_AND_ABORT("Cannot convert unknown dtype to string!"); }
     }
 
-    return str_dtype.str();
+    return ss.str();
+}
+
+t_dtype
+str_to_dtype(const std::string& typestring) {
+    // returns most commonly used types in the JS/python public APIs.
+    if (typestring == "integer") {
+        return DTYPE_INT32;
+    } else if (typestring == "float") {
+        return DTYPE_FLOAT64;
+    } else if (typestring == "boolean") {
+        return DTYPE_BOOL;
+    } else if (typestring == "date") {
+        return DTYPE_DATE;
+    } else if (typestring == "datetime") {
+        return DTYPE_TIME;
+    } else if (typestring == "string") {
+        return DTYPE_STR;
+    } else {
+        PSP_COMPLAIN_AND_ABORT(
+            "Could not convert unknown type string `" + typestring + "` to dtype.");
+        return DTYPE_NONE;
+    }
 }
 
 std::string
@@ -295,17 +343,11 @@ filter_op_to_str(t_filter_op op) {
         case FILTER_OP_AND: {
             return "and";
         } break;
-        case FILTER_OP_IS_NAN: {
-            return "is_nan";
+        case FILTER_OP_IS_NULL: {
+            return "is null";
         } break;
-        case FILTER_OP_IS_NOT_NAN: {
-            return "!is_nan";
-        } break;
-        case FILTER_OP_IS_VALID: {
-            return "is not None";
-        } break;
-        case FILTER_OP_IS_NOT_VALID: {
-            return "is None";
+        case FILTER_OP_IS_NOT_NULL: {
+            return "is not null";
         } break;
     }
     PSP_COMPLAIN_AND_ABORT("Reached end of function");
@@ -313,7 +355,7 @@ filter_op_to_str(t_filter_op op) {
 }
 
 t_filter_op
-str_to_filter_op(std::string str) {
+str_to_filter_op(const std::string& str) {
     if (str == "<") {
         return t_filter_op::FILTER_OP_LT;
     } else if (str == "<=") {
@@ -338,16 +380,12 @@ str_to_filter_op(std::string str) {
         return t_filter_op::FILTER_OP_NOT_IN;
     } else if (str == "&" || str == "and") {
         return t_filter_op::FILTER_OP_AND;
-    } else if (str == "|") {
+    } else if (str == "|" || str == "or") {
         return t_filter_op::FILTER_OP_OR;
-    } else if (str == "is nan" || str == "is_nan") {
-        return t_filter_op::FILTER_OP_IS_NAN;
-    } else if (str == "is not nan" || str == "!is_nan") {
-        return t_filter_op::FILTER_OP_IS_NOT_NAN;
-    } else if (str == "is not None") {
-        return t_filter_op::FILTER_OP_IS_VALID;
-    } else if (str == "is None") {
-        return t_filter_op::FILTER_OP_IS_NOT_VALID;
+    } else if (str == "is null" || str == "is None") {
+        return t_filter_op::FILTER_OP_IS_NULL;
+    } else if (str == "is not null" || str == "is not None") {
+        return t_filter_op::FILTER_OP_IS_NOT_NULL;
     } else {
         PSP_COMPLAIN_AND_ABORT("Encountered unknown filter operation.");
         // use and as default
@@ -356,7 +394,7 @@ str_to_filter_op(std::string str) {
 }
 
 t_sorttype
-str_to_sorttype(std::string str) {
+str_to_sorttype(const std::string& str) {
     if (str == "none") {
         return SORTTYPE_NONE;
     } else if (str == "asc" || str == "col asc") {
@@ -374,7 +412,7 @@ str_to_sorttype(std::string str) {
 }
 
 t_aggtype
-str_to_aggtype(std::string str) {
+str_to_aggtype(const std::string& str) {
     if (str == "distinct count" || str == "distinctcount" || str == "distinct"
         || str == "distinct_count") {
         return t_aggtype::AGGTYPE_DISTINCT_COUNT;
@@ -418,7 +456,7 @@ str_to_aggtype(std::string str) {
         return t_aggtype::AGGTYPE_HIGH_WATER_MARK;
     } else if (str == "low" || str == "low_water_mark") {
         return t_aggtype::AGGTYPE_LOW_WATER_MARK;
-    } else if (str == "sub abs") {
+    } else if (str == "sum abs") {
         return t_aggtype::AGGTYPE_SUM_ABS;
     } else if (str == "sum not null" || str == "sum_not_null") {
         return t_aggtype::AGGTYPE_SUM_NOT_NULL;
@@ -441,6 +479,48 @@ str_to_aggtype(std::string str) {
         // use any as default
         return t_aggtype::AGGTYPE_ANY;
     }
+}
+
+t_aggtype
+_get_default_aggregate(t_dtype dtype) {
+    t_aggtype agg_op;
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+        case DTYPE_FLOAT32:
+        case DTYPE_UINT8:
+        case DTYPE_UINT16:
+        case DTYPE_UINT32:
+        case DTYPE_UINT64:
+        case DTYPE_INT8:
+        case DTYPE_INT16:
+        case DTYPE_INT32:
+        case DTYPE_INT64: {
+            agg_op = t_aggtype::AGGTYPE_SUM;
+        } break;
+        default: { agg_op = t_aggtype::AGGTYPE_COUNT; }
+    }
+    return agg_op;
+}
+
+std::string
+_get_default_aggregate_string(t_dtype dtype) {
+    std::string agg_op_str;
+    switch (dtype) {
+        case DTYPE_FLOAT64:
+        case DTYPE_FLOAT32:
+        case DTYPE_UINT8:
+        case DTYPE_UINT16:
+        case DTYPE_UINT32:
+        case DTYPE_UINT64:
+        case DTYPE_INT8:
+        case DTYPE_INT16:
+        case DTYPE_INT32:
+        case DTYPE_INT64: {
+            agg_op_str = "sum";
+        } break;
+        default: { agg_op_str = "count"; }
+    }
+    return agg_op_str;
 }
 
 std::string

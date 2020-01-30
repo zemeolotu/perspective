@@ -14,6 +14,7 @@ export function heatmapSeries(settings, color) {
 
     series.decorate(selection => {
         tooltip().settings(settings)(selection);
+        selection.select("path").attr("fill", d => color(d.colorValue));
     });
 
     return fc
@@ -22,7 +23,5 @@ export function heatmapSeries(settings, color) {
         .yValue(d => d.mainValue)
         .colorValue(d => d.colorValue)
         .colorInterpolate(color.interpolator())
-        .xAlign("right")
-        .yAlign("top")
         .widthFraction(1.0);
 }

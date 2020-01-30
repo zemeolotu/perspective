@@ -8,39 +8,53 @@
  */
 
 const path = require("path");
-const PerspectivePlugin = require("@jpmorganchase/perspective-webpack-plugin");
 const webpack = require("webpack");
 
 module.exports = {
-    entry: "./src/ts/index.ts",
+    mode: process.env.PSP_NO_MINIFY || process.env.PSP_DEBUG ? "development" : process.env.NODE_ENV || "production",
+    entry: {
+        index: "./src/ts/index.ts"
+    },
     resolveLoader: {
         alias: {
-            "file-worker-loader": "@jpmorganchase/perspective-webpack-plugin/src/js/psp-worker-loader.js"
+            "file-worker-loader": "@finos/perspective-webpack-plugin/src/js/psp-worker-loader.js"
         }
     },
     resolve: {
         extensions: [".ts", ".js"]
     },
-    externals: /\@jupyter|\@phosphor/,
-    plugins: [new webpack.ContextReplacementPlugin(/moment[\/\\]locale$/, /(en|es|fr)$/), new PerspectivePlugin()],
+    performance: {
+        hints: false,
+        maxEntrypointSize: 512000,
+        maxAssetSize: 512000
+    },
+    externals: /\@jupyterlab|\@phosphor|\@jupyter-widgets/,
+    stats: {modules: false, hash: false, version: false, builtAt: false, entrypoints: false},
+    plugins: [new webpack.ContextReplacementPlugin(/moment[\/\\]locale$/, /(en|es|fr)$/)],
     module: {
         rules: [
             {
                 test: /\.css$/,
+                exclude: /node_modules/,
                 use: [{loader: "css-loader"}]
             },
             {
-                test: /\.json$/,
-                loader: "json-loader"
+                test: /\.(wasm)$/,
+                type: "javascript/auto",
+                use: {
+                    loader: "arraybuffer-loader",
+                    options: {}
+                }
             },
             {
                 test: /\.ts$/,
+                exclude: /node_modules/,
                 loader: "ts-loader"
             }
         ]
     },
     output: {
-        filename: "index.js",
+        filename: "[name].js",
         libraryTarget: "umd",
         path: path.resolve(__dirname, "../../dist")
     }

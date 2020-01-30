@@ -33,8 +33,7 @@ t_ctx1::init() {
     auto pivots = m_config.get_row_pivots();
     m_tree = std::make_shared<t_stree>(pivots, m_config.get_aggregates(), m_schema, m_config);
     m_tree->init();
-    m_traversal
-        = std::shared_ptr<t_traversal>(new t_traversal(m_tree, m_config.handle_nan_sort()));
+    m_traversal = std::shared_ptr<t_traversal>(new t_traversal(m_tree));
     m_minmax = std::vector<t_minmax>(m_config.get_num_aggregates());
     m_init = true;
 }
@@ -156,9 +155,64 @@ t_ctx1::get_data(t_index start_row, t_index end_row, t_index start_col, t_index 
     return values;
 }
 
+std::vector<t_tscalar>
+t_ctx1::get_data(const std::vector<t_uindex>& rows) const {
+    PSP_TRACE_SENTINEL();
+    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+    t_uindex nrows = rows.size();
+    t_uindex ncols = get_column_count();
+
+    std::vector<t_tscalar> tmpvalues(nrows * ncols);
+    std::vector<t_tscalar> values(nrows * ncols);
+
+    std::vector<const t_column*> aggcols(m_config.get_num_aggregates());
+
+    auto aggtable = m_tree->get_aggtable();
+    t_schema aggschema = aggtable->get_schema();
+    auto none = mknone();
+
+    for (t_uindex aggidx = 0, loop_end = aggcols.size(); aggidx < loop_end; ++aggidx) {
+        const std::string& aggname = aggschema.m_columns[aggidx];
+        aggcols[aggidx] = aggtable->get_const_column(aggname).get();
+    }
+
+    const std::vector<t_aggspec>& aggspecs = m_config.get_aggregates();
+
+    // access data for changed rows, but write them into the slice as if we start from 0
+    for (t_uindex idx = 0; idx < nrows; ++idx) {
+        t_uindex ridx = rows[idx];
+        t_index nidx = m_traversal->get_tree_index(ridx);
+        t_index pnidx = m_tree->get_parent_idx(nidx);
+
+        t_uindex agg_ridx = m_tree->get_aggidx(nidx);
+        t_index agg_pridx = pnidx == INVALID_INDEX ? INVALID_INDEX : m_tree->get_aggidx(pnidx);
+
+        t_tscalar tree_value = m_tree->get_value(nidx);
+        tmpvalues[idx * ncols] = tree_value;
+
+        for (t_index aggidx = 0, loop_end = aggcols.size(); aggidx < loop_end; ++aggidx) {
+            t_tscalar value
+                = extract_aggregate(aggspecs[aggidx], aggcols[aggidx], agg_ridx, agg_pridx);
+            if (!value.is_valid())
+                value.set(none); // todo: fix null handling
+            tmpvalues[idx * ncols + 1 + aggidx].set(value);
+        }
+    }
+
+    for (t_uindex ridx = 0; ridx < nrows; ++ridx) {
+        for (t_uindex cidx = 0; cidx < ncols; ++cidx) {
+            t_uindex idx = ridx * ncols + cidx;
+            values[idx].set(tmpvalues[idx]);
+        }
+    }
+
+    return values;
+}
+
 void
-t_ctx1::notify(const t_table& flattened, const t_table& delta, const t_table& prev,
-    const t_table& current, const t_table& transitions, const t_table& existed) {
+t_ctx1::notify(const t_data_table& flattened, const t_data_table& delta,
+    const t_data_table& prev, const t_data_table& current, const t_data_table& transitions,
+    const t_data_table& existed) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     psp_log_time(repr() + " notify.enter");
@@ -193,6 +247,17 @@ t_ctx1::get_aggregate(t_uindex idx) const {
     if (idx >= m_config.get_num_aggregates())
         return t_aggspec();
     return m_config.get_aggregates()[idx];
+}
+
+t_tscalar
+t_ctx1::get_aggregate_name(t_uindex idx) const {
+    PSP_TRACE_SENTINEL();
+    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+    t_tscalar s;
+    if (idx >= m_config.get_num_aggregates())
+        return s;
+    s.set(m_config.get_aggregates()[idx].name_scalar());
+    return s;
 }
 
 std::vector<t_aggspec>
@@ -301,6 +366,11 @@ t_ctx1::get_cell_data(const std::vector<std::pair<t_uindex, t_uindex>>& cells) c
     return rval;
 }
 
+bool
+t_ctx1::get_deltas_enabled() const {
+    return m_features[CTX_FEAT_DELTA];
+}
+
 void
 t_ctx1::set_feature_state(t_ctx_feature feature, bool state) {
     m_features[feature] = state;
@@ -331,6 +401,13 @@ t_ctx1::get_min_max() const {
     return m_minmax;
 }
 
+/**
+ * @brief Returns updated cells.
+ *
+ * @param bidx
+ * @param eidx
+ * @return t_stepdelta
+ */
 t_stepdelta
 t_ctx1::get_step_delta(t_index bidx, t_index eidx) {
     PSP_TRACE_SENTINEL();
@@ -341,6 +418,43 @@ t_ctx1::get_step_delta(t_index bidx, t_index eidx) {
     t_stepdelta rval(m_rows_changed, m_columns_changed, get_cell_delta(bidx, eidx));
     m_tree->clear_deltas();
     return rval;
+}
+
+/**
+ * @brief Returns a `t_rowdelta` object containing:
+ * - the row indices that have been updated
+ * - the data from those updated rows
+ *
+ * @return t_rowdelta
+ */
+t_rowdelta
+t_ctx1::get_row_delta() {
+    PSP_TRACE_SENTINEL();
+    PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
+    std::vector<t_uindex> rows = get_rows_changed();
+    std::vector<t_tscalar> data = get_data(rows);
+    t_rowdelta rval(m_rows_changed, rows.size(), data);
+    m_tree->clear_deltas();
+    return rval;
+}
+
+std::vector<t_uindex>
+t_ctx1::get_rows_changed() {
+    std::vector<t_uindex> rows;
+    const auto& deltas = m_tree->get_deltas();
+    t_uindex eidx = t_uindex(m_traversal->size());
+
+    for (t_uindex idx = 0; idx < eidx; ++idx) {
+        t_index ptidx = m_traversal->get_tree_index(idx);
+        // Retrieve delta from storage and check if the row has been changed
+        auto iterators = deltas->get<by_tc_nidx_aggidx>().equal_range(ptidx);
+        bool unique_ridx = std::find(rows.begin(), rows.end(), idx) == rows.end();
+        if ((iterators.first != iterators.second) && unique_ridx)
+            rows.push_back(idx);
+    }
+
+    std::sort(rows.begin(), rows.end());
+    return rows;
 }
 
 std::vector<t_cellupd>
@@ -367,8 +481,7 @@ t_ctx1::reset() {
     m_tree = std::make_shared<t_stree>(pivots, m_config.get_aggregates(), m_schema, m_config);
     m_tree->init();
     m_tree->set_deltas_enabled(get_feature_state(CTX_FEAT_DELTA));
-    m_traversal
-        = std::shared_ptr<t_traversal>(new t_traversal(m_tree, m_config.handle_nan_sort()));
+    m_traversal = std::shared_ptr<t_traversal>(new t_traversal(m_tree));
 }
 
 void
@@ -409,7 +522,7 @@ t_ctx1::get_agg_min_max(t_uindex aggidx, t_depth depth) const {
 }
 
 void
-t_ctx1::notify(const t_table& flattened) {
+t_ctx1::notify(const t_data_table& flattened) {
     PSP_TRACE_SENTINEL();
     PSP_VERBOSE_ASSERT(m_init, "touching uninited object");
     notify_sparse_tree(m_tree, m_traversal, true, m_config.get_aggregates(),
@@ -573,11 +686,11 @@ t_ctx1::clear_deltas() {
 void
 t_ctx1::unity_init_load_step_end() {}
 
-std::shared_ptr<t_table>
+std::shared_ptr<t_data_table>
 t_ctx1::get_table() const {
     auto schema = m_tree->get_aggtable()->get_schema();
     auto pivots = m_config.get_row_pivots();
-    auto tbl = std::make_shared<t_table>(schema, m_tree->size());
+    auto tbl = std::make_shared<t_data_table>(schema, m_tree->size());
     tbl->init();
     tbl->extend(m_tree->size());
 

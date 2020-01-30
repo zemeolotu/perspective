@@ -6,9 +6,6 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-export * from './widget';
-export * from './utils';
 
-/* css */
-import '!!style-loader!css-loader!less-loader!../less/index.less';
-
+export * from "./widget";
+export * from "./utils";

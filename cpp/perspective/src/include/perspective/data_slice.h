@@ -23,7 +23,11 @@ namespace perspective {
  * @class t_data_slice
  *
  * @brief t_data_slice contains a slice of the View's underlying data
- * with the metadata required to correctly parse it.
+ * with the metadata required to correctly parse it. It offers a unified get(row_index,
+ * col_index) API that is extensible and does not require additional parsing in the binding
+ * language. This makes implementing data serialization easy, as one simply writes each row and
+ * each column inside it sequentially.
+ *
  *
  * - m_view: a reference to the view from which we output data
  * - m_slice: a reference to a vector of t_tscalar objects containing data
@@ -35,15 +39,37 @@ namespace perspective {
 template <typename CTX_T>
 class PERSPECTIVE_EXPORT t_data_slice {
 public:
-    t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row, t_uindex end_row,
-        t_uindex start_col, t_uindex end_col,
-        const std::shared_ptr<std::vector<t_tscalar>>& slice,
-        std::vector<std::string> column_names);
+    t_data_slice(
+        std::shared_ptr<CTX_T> ctx,
+        t_uindex start_row,
+        t_uindex end_row,
+        t_uindex start_col,
+        t_uindex end_col,
+        t_uindex row_offset,
+        t_uindex col_offset,
+        const std::vector<t_tscalar>& slice,
+        const std::vector<std::vector<t_tscalar>>& column_names);
 
-    t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row, t_uindex end_row,
-        t_uindex start_col, t_uindex end_col,
-        const std::shared_ptr<std::vector<t_tscalar>>& slice,
-        std::vector<std::string> column_names, std::vector<t_uindex> column_indices);
+    /**
+     * @brief Construct a new data slice, with a vector of row indices on which to access the
+     * underlying data.
+     *
+     * @tparam CTX_T
+     * @param ctx
+     * @param slice
+     * @param row_indices
+     */
+    t_data_slice(
+        std::shared_ptr<CTX_T> ctx,
+        t_uindex start_row,
+        t_uindex end_row,
+        t_uindex start_col,
+        t_uindex end_col,
+        t_uindex row_offset,
+        t_uindex col_offset,
+        const std::vector<t_tscalar>& slice, 
+        const std::vector<std::vector<t_tscalar>>& column_names,
+        const std::vector<t_uindex>& column_indices);
 
     ~t_data_slice();
 
@@ -59,26 +85,52 @@ public:
      */
     t_tscalar get(t_uindex ridx, t_uindex cidx) const;
 
-    std::vector<t_tscalar> get_row_path(t_uindex idx) const;
-    t_uindex get_slice_idx(t_uindex ridx, t_uindex cidx) const;
+    std::vector<t_tscalar> get_pkeys(t_uindex ridx, t_uindex cidx) const;
 
+    /**
+     * @brief Returns the row path, which maps a specific piece of data to the
+     * row and column that it belongs to.
+     *
+     * @param ridx the row index into the slice
+     * @return std::vector<t_tscalar>
+     */
+    std::vector<t_tscalar> get_row_path(t_uindex ridx) const;
+
+    std::vector<t_tscalar> get_column_slice(t_uindex cidx) const;
+
+    // Getters
     std::shared_ptr<CTX_T> get_context() const;
-    std::shared_ptr<std::vector<t_tscalar>> get_slice() const;
-    const std::vector<std::string>& get_column_names() const;
+    const std::vector<t_tscalar>& get_slice() const;
+    const std::vector<std::vector<t_tscalar>>& get_column_names() const;
     const std::vector<t_uindex>& get_column_indices() const;
     t_get_data_extents get_data_extents() const;
     t_uindex get_stride() const;
+    t_uindex num_rows() const;
+    t_uindex get_row_offset() const;
+    t_uindex get_col_offset() const;
     bool is_column_only() const;
 
 private:
+    /**
+     * @brief Calculates the index into the underlying data slice for the
+     * row and the column.
+     *
+     * @param ridx
+     * @param cidx
+     * @return t_uindex
+     */
+    t_uindex get_slice_idx(t_uindex ridx, t_uindex cidx) const;
+
     std::shared_ptr<CTX_T> m_ctx;
     t_uindex m_start_row;
     t_uindex m_end_row;
     t_uindex m_start_col;
     t_uindex m_end_col;
+    t_uindex m_row_offset;
+    t_uindex m_col_offset;
     t_uindex m_stride;
-    std::shared_ptr<std::vector<t_tscalar>> m_slice;
-    std::vector<std::string> m_column_names;
+    std::vector<t_tscalar> m_slice;
+    std::vector<std::vector<t_tscalar>> m_column_names;
     std::vector<t_uindex> m_column_indices;
 };
 } // end namespace perspective

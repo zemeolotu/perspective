@@ -65,8 +65,10 @@ t_uindex
 t_schema::get_colidx(const std::string& colname) const {
     auto iter = m_colidx_map.find(colname);
     if (iter == m_colidx_map.end()) {
-        std::cout << "Column " << colname << " does not exist in schema." << std::endl;
-        PSP_COMPLAIN_AND_ABORT("");
+        std::stringstream ss;
+        ss << "Could not find column `" << colname 
+           << "` in the schema." << std::endl;
+        PSP_COMPLAIN_AND_ABORT(ss.str());
     }
     return iter->second;
 }
@@ -75,8 +77,10 @@ t_dtype
 t_schema::get_dtype(const std::string& colname) const {
     auto iter = m_coldt_map.find(colname);
     if (iter == m_coldt_map.end()) {
-        std::cout << "Column " << colname << " does not exist in schema." << std::endl;
-        PSP_COMPLAIN_AND_ABORT("");
+        std::stringstream ss;
+        ss << "Could not get type for column `" << colname 
+           << "` as it does not exist in the schema." << std::endl;
+        PSP_COMPLAIN_AND_ABORT(ss.str());
     }
     return iter->second;
 }
@@ -118,7 +122,10 @@ t_schema::retype_column(const std::string& colname, t_dtype dtype) {
         PSP_COMPLAIN_AND_ABORT("Cannot retype primary key or operation columns.");
     }
     if (!has_column(colname)) {
-        PSP_COMPLAIN_AND_ABORT("Cannot retype a column that does not exist.");
+        std::stringstream ss;
+        ss << "Cannot retype column `" << colname << "` as it does not exist."
+           << std::endl;
+        PSP_COMPLAIN_AND_ABORT(ss.str());
     }
 
     t_uindex idx = get_colidx(colname);

@@ -6,10 +6,15 @@
  * the Apache License 2.0.  The full license can be found in the LICENSE file.
  *
  */
-import {labelFunction} from "../axis/crossAxis";
+import {axisType} from "../axis/axisType";
+import {AXIS_TYPES} from "../axis/axisType";
+import {labelFunction} from "../axis/axisLabel";
 
 export function heatmapData(settings, data) {
     const labelfn = labelFunction(settings);
+    const mainType = axisType(settings)
+        .excludeType(AXIS_TYPES.linear)
+        .settingName("splitValues")();
 
     const heatmapData = [];
 
@@ -18,10 +23,12 @@ export function heatmapData(settings, data) {
         Object.keys(col)
             .filter(key => key !== "__ROW_PATH__")
             .forEach(key => {
+                const mainValue = getMainValues(key);
                 heatmapData.push({
                     crossValue: crossValue,
-                    mainValue: getMainValues(key),
-                    colorValue: col[key]
+                    mainValue: mainType === AXIS_TYPES.time ? new Date(mainValue) : mainValue,
+                    colorValue: col[key],
+                    row: col
                 });
             });
     });

@@ -13,8 +13,8 @@
       "ES2015.Promise",
       "DOM"
     ],
-    "types": [
-      "@jpmorganchase/perspective-phosphor",
+    "types":[
+      "@finos/perspective-phosphor",
       "node"
     ]
   },

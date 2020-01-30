@@ -35,6 +35,7 @@ t_cellupd::t_cellupd(
 
 t_cellupd::t_cellupd() {}
 
+// t_stepdelta contains a vector of t_cellupd objects showing the cells that have been changed
 t_stepdelta::t_stepdelta() {}
 
 t_stepdelta::t_stepdelta(
@@ -43,6 +44,14 @@ t_stepdelta::t_stepdelta(
     , columns_changed(columns_changed)
     , cells(cells) {}
 
+// t_rowdelta contains a vector of row indices that have been changed
+t_rowdelta::t_rowdelta() {}
+
+t_rowdelta::t_rowdelta(
+    bool rows_changed, t_uindex num_rows_changed, const std::vector<t_tscalar>& data)
+    : rows_changed(rows_changed)
+    , num_rows_changed(num_rows_changed)
+    , data(data) {}
 } // end namespace perspective
 
 namespace std {

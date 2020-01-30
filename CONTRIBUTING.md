@@ -2,9 +2,17 @@
 
 Thank you for your interest in contributing to Perspective!
 
-Perspective is built on open source and we invite you to contribute enhancements. Upon review you will be required to complete the [Contributor License Agreement (CLA)](https://github.com/jpmorganchase/cla) before we are able to merge. 
+Perspective is built on open source and hosted by the Fintech Open Source Foundation (FINOS). We invite you to participate in our community by adding and commenting on [issues](https://github.com/finos/perspective/issues) (e.g., bug reports; new feature suggestions) or contributing code enhancements through a pull request.
 
-If you have any questions about the contribution process, please feel free to chat with us on [gitter](https://gitter.im/jpmorganchase/perspective), or send an email to [quorum_info@jpmorgan.com](mailto:quorum_info@jpmorgan.com).
+Note that commits and pull requests to FINOS repositories such as Perspective may only be accepted from those contributors with a [Contributor License Agreement (CLA)](https://finosfoundation.atlassian.net/wiki/spaces/FINOS/pages/75530375/Contribution+Compliance+Requirements#ContributionComplianceRequirements-ContributorLicenseAgreement) with FINOS. This may take the form of either:
+* an active, executed Individual Contributor License Agreement (ICLA) with FINOS, OR
+* coverage under an existing, active Corporate Contribution License Agreement (CCLA) executed with FINOS (most likely by the developer's employer). Please note that some, though not all, CCLAs require individuals/employees to be explicitly named on the CCLA.
+
+Commits from individuals not covered under an CLA can not be merged by Perspective's committers. We encourage you to check that you have a CLA in place well in advance of making your first pull request. 
+
+Need an ICLA? Unsure if you are covered under an existing CCLA? Confused? Email [help@finos.org](mailto:help@finos.org) and the foundation team will help get it sorted out for you. 
+
+If you have any general questions about contributing to Perspective, please feel free to chat with us on [gitter](https://gitter.im/finos/perspective), open an issue on [github](https://github.com/finos/perspective/issues/new), or email [help@finos.org](mailto:finos.org).
 
 ## Guidelines
 
@@ -19,8 +27,8 @@ coding guidelines:
 * Please do not submit incomplete PRs or partially implemented features.  Feature additions should be implemented completely, including Javascript API and `<perspective-viewer>` UX.  If your PR is a build, documentation, test change, or an API change that is not applicable to the UX, please explain this in the comments.
 * Please do not submit PRs disabled by feature or build flag - experimental features should be kept on a branch until they are ready to be merged.
 * Feature additions, make sure you have added complete JSDoc to any new APIs, as well as additions to the [Usage Guide]() if applicable.
-* All PRs should be accompanied by tests asserting their behavior in any packages they modify.  C++ and Javascript changes to `@jpmorganchase/perspective` should add Node.js tests, and additional changes should add Puppeteer tests.
-* If your PR modifies the C++ or JS `@jpmorganchase/perspective` code in a way which may affect performance, be sure to update the benchmark suite as per the [Developer Documentation]().
+* All PRs should be accompanied by tests asserting their behavior in any packages they modify.  C++ and Javascript changes to `@finos/perspective` should add Node.js tests, and additional changes should add Puppeteer tests.
+* If your PR modifies the C++ or JS `@finos/perspective` code in a way which may affect performance, be sure to update the benchmark suite as per the [Developer Documentation]().
 * Do not commit with `--no-verify` or otherwise bypass commit hooks, and please respect the formatting and linting guidelines they enforce.
 * Do not `merge master` upstream changes into your PR.  If your change has conflicts with the `master` branch, please pull master into your fork's master, then rebase.
 

@@ -1,13 +1,24 @@
+/******************************************************************************
+ *
+ * Copyright (c) 2017, the Perspective Authors.
+ *
+ * This file is part of the Perspective library, distributed under the terms of
+ * the Apache License 2.0.  The full license can be found in the LICENSE file.
+ *
+ */
+
 import {select} from "d3";
-import {getChartElement} from "../plugin/root";
-import {getOrCreateElement} from "../utils/utils";
+import {getChartContainer} from "../plugin/root";
+import {getOrCreateElement, isElementOverflowing} from "../utils/utils";
 import tooltipTemplate from "../../html/tooltip.html";
 import {generateHtml} from "./generateHTML";
+import {selectionEvent} from "./selectionEvent";
 
 export const tooltip = () => {
     let alwaysShow = false;
     let tooltipDiv = null;
     let settings = null;
+    let centered = false;
 
     const _tooltip = selection => {
         const node = selection.node();
@@ -17,12 +28,12 @@ export const tooltip = () => {
             return;
         }
 
-        const container = select(getChartElement(node).getContainer());
+        const container = select(getChartContainer(node));
         tooltipDiv = getTooltipDiv(container);
 
         const showTip = (data, i, nodes) => {
             generateHtml(tooltipDiv, data, settings);
-            showTooltip(container.node(), nodes[i], tooltipDiv);
+            showTooltip(container.node(), nodes[i], tooltipDiv, centered);
             select(nodes[i]).style("opacity", "0.7");
         };
         const hideTip = (data, i, nodes) => {
@@ -34,6 +45,7 @@ export const tooltip = () => {
             selection.each(showTip);
         } else {
             selection.on("mouseover", showTip).on("mouseout", hideTip);
+            selectionEvent().settings(settings)(selection);
         }
     };
 
@@ -42,6 +54,14 @@ export const tooltip = () => {
             return alwaysShow;
         }
         alwaysShow = args[0];
+        return _tooltip;
+    };
+
+    _tooltip.centered = (...args) => {
+        if (!args.length) {
+            return centered;
+        }
+        centered = args[0];
         return _tooltip;
     };
 
@@ -67,12 +87,14 @@ function getTooltipDiv(container) {
     );
 }
 
-function showTooltip(containerNode, barNode, tooltipDiv) {
+function showTooltip(containerNode, node, tooltipDiv, centered) {
     const containerRect = containerNode.getBoundingClientRect();
-    const barRect = barNode.getBoundingClientRect();
+    const rect = node.getBoundingClientRect();
 
-    const left = barRect.left + barRect.width / 2 - containerRect.left;
-    const top = barRect.top - containerRect.top;
+    let left = rect.left + rect.width / 2 - containerRect.left;
+    let top = rect.top - containerRect.top + containerNode.scrollTop;
+
+    if (centered) top = rect.top + rect.height / 2 - containerRect.top + containerNode.scrollTop;
 
     tooltipDiv
         .style("left", `${left}px`)
@@ -81,19 +103,46 @@ function showTooltip(containerNode, barNode, tooltipDiv) {
         .duration(200)
         .style("opacity", 0.9);
 
-    shiftIfOverflowingChartArea(tooltipDiv, containerRect, left, top);
+    if (centered) [left, top] = centerTip(tooltipDiv, containerRect);
+
+    shiftIfOverflowingChartArea(tooltipDiv, containerRect, left, top, centered);
 }
 
-function shiftIfOverflowingChartArea(tooltipDiv, containerRect, left, top) {
+function centerTip(tooltipDiv, containerRect) {
     const tooltipDivRect = tooltipDiv.node().getBoundingClientRect();
 
-    if (containerRect.right < tooltipDivRect.right) {
+    const leftAdjust = tooltipDivRect.width / 2;
+    const newLeft = tooltipDivRect.left - leftAdjust - containerRect.left;
+    tooltipDiv.style("left", `${newLeft}px`);
+
+    const topAdjust = tooltipDivRect.height / 2;
+    const newTop = tooltipDivRect.top - topAdjust - containerRect.top;
+    tooltipDiv.style("top", `${newTop}px`);
+    return [newLeft, newTop];
+}
+
+function shiftIfOverflowingChartArea(tooltipDiv, containerRect, left, top, centered = false) {
+    const tooltipDivRect = tooltipDiv.node().getBoundingClientRect();
+
+    if (isElementOverflowing(containerRect, tooltipDivRect)) {
         const leftAdjust = tooltipDivRect.right - containerRect.right;
         tooltipDiv.style("left", `${left - leftAdjust}px`);
     }
 
-    if (containerRect.bottom < tooltipDivRect.bottom) {
+    if (isElementOverflowing(containerRect, tooltipDivRect, "bottom")) {
         const topAdjust = tooltipDivRect.bottom - containerRect.bottom;
+        tooltipDiv.style("top", `${top - topAdjust}px`);
+    }
+
+    if (!centered) return;
+
+    if (isElementOverflowing(containerRect, tooltipDivRect, "left")) {
+        const leftAdjust = tooltipDivRect.left - containerRect.left;
+        tooltipDiv.style("left", `${left - leftAdjust}px`);
+    }
+
+    if (isElementOverflowing(containerRect, tooltipDivRect, "top")) {
+        const topAdjust = tooltipDivRect.top - containerRect.top;
         tooltipDiv.style("top", `${top - topAdjust}px`);
     }
 }

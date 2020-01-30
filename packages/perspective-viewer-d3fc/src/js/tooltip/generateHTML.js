@@ -7,40 +7,14 @@
  *
  */
 import {select} from "d3";
+import {getGroupValues, getSplitValues, getDataValues} from "./selectionData";
+import {get_type_config} from "@finos/perspective/dist/esm/config";
 
 export function generateHtml(tooltipDiv, data, settings) {
     const tooltipValues = getGroupValues(data, settings)
         .concat(getSplitValues(data, settings))
         .concat(getDataValues(data, settings));
     addDataValues(tooltipDiv, tooltipValues);
-}
-
-function getGroupValues(data, settings) {
-    if (settings.crossValues.length === 0) return [];
-    const groupValues = (data.crossValue.split ? data.crossValue.split("|") : [data.crossValue]) || [data.key];
-    return settings.crossValues.map((cross, i) => ({name: cross.name, value: groupValues[i]}));
-}
-
-function getSplitValues(data, settings) {
-    if (settings.splitValues.length === 0) return [];
-    const splitValues = data.key ? data.key.split("|").slice(0, -1) : data.mainValue.split("|");
-    return settings.splitValues.map((split, i) => ({name: split.name, value: splitValues[i]}));
-}
-
-function getDataValues(data, settings) {
-    if (settings.mainValues.length > 1) {
-        if (data.mainValue) {
-            return {
-                name: data.key,
-                value: data.mainValue
-            };
-        }
-        return settings.mainValues.map((main, i) => ({name: main.name, value: data.mainValues[i]}));
-    }
-    return {
-        name: settings.mainValues[0].name,
-        value: data.colorValue || data.mainValue - data.baseValue || data.mainValue
-    };
 }
 
 function addDataValues(tooltipDiv, values) {
@@ -57,4 +31,9 @@ function addDataValues(tooltipDiv, values) {
         });
 }
 
-const formatNumber = value => (typeof value === "number" ? value.toLocaleString(undefined, {style: "decimal"}) : value);
+const formatNumber = value =>
+    value.toLocaleString(undefined, {
+        style: "decimal",
+        minimumFractionDigits: get_type_config("float").precision,
+        maximumFractionDigits: get_type_config("float").precision
+    });

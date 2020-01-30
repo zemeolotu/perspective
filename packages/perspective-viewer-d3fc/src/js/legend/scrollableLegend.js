@@ -8,31 +8,44 @@
  */
 import * as d3Legend from "d3-svg-legend";
 import {rebindAll} from "d3fc";
-import {areArraysEqualSimple, getOrCreateElement} from "../utils/utils";
+import {getOrCreateElement} from "../utils/utils";
 import legendControlsTemplate from "../../html/legend-controls.html";
+import {cropCellContents} from "./styling/cropCellContents";
+import {draggableComponent} from "./styling/draggableComponent";
+import {resizableComponent} from "./styling/resizableComponent";
 
-export default fromLegend => {
+const averageCellHeightPx = 16;
+const controlsHeightPx = 20;
+
+export default (fromLegend, settings) => {
     const legend = fromLegend || d3Legend.legendColor();
+
     let domain = [];
     let pageCount = 1;
-    let pageSize = 15;
-    let pageIndex = 0;
+    let pageSize;
+    let pageIndex = settings.legend && settings.legend.pageIndex ? settings.legend.pageIndex : 0;
     let decorate = () => {};
+    let draggable = draggableComponent().settings(settings);
+    let resizable;
 
     const scrollableLegend = selection => {
-        const newDomain = legend.scale().domain();
-        if (!areArraysEqualSimple(domain, newDomain)) {
-            pageIndex = 0;
-            domain = newDomain;
-        }
-        pageCount = Math.ceil(domain.length / pageSize);
+        domain = legend.scale().domain();
 
+        resizable = resizableComponent()
+            .settings(settings)
+            .maxHeight(domain.length * averageCellHeightPx + controlsHeightPx)
+            .on("resize", () => render(selection));
+
+        resizable(selection);
+        draggable(selection);
         render(selection);
     };
 
     const render = selection => {
+        calculatePageSize(selection);
         renderControls(selection);
         renderLegend(selection);
+        cropCellContents(selection);
     };
 
     const renderControls = selection => {
@@ -46,7 +59,7 @@ export default fromLegend => {
             .attr("class", pageIndex === 0 ? "disabled" : "")
             .on("click", () => {
                 if (pageIndex > 0) {
-                    pageIndex--;
+                    setPage(pageIndex - 1);
                     render(selection);
                 }
             });
@@ -56,7 +69,7 @@ export default fromLegend => {
             .attr("class", pageIndex >= pageCount - 1 ? "disabled" : "")
             .on("click", () => {
                 if (pageIndex < pageCount - 1) {
-                    pageIndex++;
+                    setPage(pageIndex + 1);
                     render(selection);
                 }
             });
@@ -69,18 +82,34 @@ export default fromLegend => {
         const legendElement = getLegendElement(selection);
         legendElement.call(legend);
 
-        const cellSize = selection
+        const cellContainerSize = selection
             .select("g.legendCells")
             .node()
             .getBBox();
-        legendElement.attr("height", cellSize.height + 20);
+        legendElement.attr("height", cellContainerSize.height + controlsHeightPx);
 
         decorate(selection);
     };
 
-    const cellFilter = () => {
-        return (_, i) => i >= pageSize * pageIndex && i < pageSize * pageIndex + pageSize;
+    const setPage = index => {
+        pageIndex = index;
+        settings.legend = {...settings.legend, pageIndex};
     };
+
+    const cellFilter = () => (_, i) => i >= pageSize * pageIndex && i < pageSize * pageIndex + pageSize;
+
+    const calculatePageSize = selection => {
+        const legendContainerRect = selection.node().getBoundingClientRect();
+        let proposedPageSize = Math.floor(legendContainerRect.height / averageCellHeightPx) - 1;
+
+        // if page size is less than all legend items, leave space for the
+        // legend controls
+        pageSize = proposedPageSize < domain.length ? proposedPageSize - 1 : proposedPageSize;
+        pageCount = calculatePageCount(proposedPageSize);
+        pageIndex = Math.min(pageIndex, pageCount - 1);
+    };
+
+    const calculatePageCount = pageSize => Math.ceil(domain.length / pageSize);
 
     const getLegendControls = container =>
         getOrCreateElement(container, ".legend-controls", () =>
@@ -101,5 +130,6 @@ export default fromLegend => {
     };
 
     rebindAll(scrollableLegend, legend);
+
     return scrollableLegend;
 };

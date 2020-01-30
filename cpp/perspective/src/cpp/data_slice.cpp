@@ -14,13 +14,16 @@ namespace perspective {
 
 template <typename CTX_T>
 t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row,
-    t_uindex end_row, t_uindex start_col, t_uindex end_col,
-    const std::shared_ptr<std::vector<t_tscalar>>& slice, std::vector<std::string> column_names)
+    t_uindex end_row, t_uindex start_col, t_uindex end_col, t_uindex row_offset,
+    t_uindex col_offset, const std::vector<t_tscalar>& slice,
+    const std::vector<std::vector<t_tscalar>>& column_names)
     : m_ctx(ctx)
     , m_start_row(start_row)
     , m_end_row(end_row)
     , m_start_col(start_col)
     , m_end_col(end_col)
+    , m_row_offset(row_offset)
+    , m_col_offset(col_offset)
     , m_slice(slice)
     , m_column_names(column_names) {
     m_stride = m_end_col - m_start_col;
@@ -28,14 +31,17 @@ t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row
 
 template <typename CTX_T>
 t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row,
-    t_uindex end_row, t_uindex start_col, t_uindex end_col,
-    const std::shared_ptr<std::vector<t_tscalar>>& slice, std::vector<std::string> column_names,
-    std::vector<t_uindex> column_indices)
+    t_uindex end_row, t_uindex start_col, t_uindex end_col, t_uindex row_offset,
+    t_uindex col_offset, const std::vector<t_tscalar>& slice,
+    const std::vector<std::vector<t_tscalar>>& column_names,
+    const std::vector<t_uindex>& column_indices)
     : m_ctx(ctx)
     , m_start_row(start_row)
     , m_end_row(end_row)
     , m_start_col(start_col)
     , m_end_col(end_col)
+    , m_row_offset(row_offset)
+    , m_col_offset(col_offset)
     , m_slice(slice)
     , m_column_names(column_names)
     , m_column_indices(column_indices) {
@@ -45,53 +51,54 @@ t_data_slice<CTX_T>::t_data_slice(std::shared_ptr<CTX_T> ctx, t_uindex start_row
 template <typename CTX_T>
 t_data_slice<CTX_T>::~t_data_slice() {}
 
-/**
- * @brief Returns the t_tscalar at the declared indices in the data slice,
- * or an invalid t_tscalar if the indices should be skipped.
- *
- * @param ridx row index into the slice
- * @param cidx column index into the slice
- *
- * @return t_tscalar a valid scalar containing the underlying data, or a new
- * t_tscalar initialized with an invalid flag.
- */
+// Public API
 template <typename CTX_T>
 t_tscalar
 t_data_slice<CTX_T>::get(t_uindex ridx, t_uindex cidx) const {
+    ridx += m_row_offset;
     t_uindex idx = get_slice_idx(ridx, cidx);
     t_tscalar rv;
-    if (idx >= m_slice->size()) {
+    if (idx >= m_slice.size()) {
         rv.clear();
     } else {
-        rv = m_slice->at(idx);
+        rv = m_slice.operator[](idx);
     }
-    return rv;
-}
-
-template <>
-t_tscalar
-t_data_slice<t_ctx2>::get(t_uindex ridx, t_uindex cidx) const {
-    t_uindex idx = get_slice_idx(ridx, cidx);
-    t_tscalar rv = m_slice->operator[](idx);
-    /* if (m_column_indices.size() > 0) {
-        t_uindex idx_skip_headers;
-    } else {
-
-    } */
     return rv;
 }
 
 template <typename CTX_T>
 std::vector<t_tscalar>
-t_data_slice<CTX_T>::get_row_path(t_uindex idx) const {
-    return m_ctx->unity_get_row_path(idx);
+t_data_slice<CTX_T>::get_pkeys(t_uindex ridx, t_uindex cidx) const {
+    std::pair<t_uindex, t_uindex> pair{ridx, cidx};
+    std::vector<std::pair<t_uindex, t_uindex>> vec{pair};
+    return m_ctx->get_pkeys(vec);
+}
+
+template <typename CTX_T>
+std::vector<t_tscalar>
+t_data_slice<CTX_T>::get_column_slice(t_uindex cidx) const {
+    std::vector<t_tscalar> column_data;
+    column_data.reserve(m_end_row);
+
+    for (t_uindex ridx = 0; ridx < m_end_row; ++ridx) {
+        ridx += m_row_offset;
+        t_tscalar value = get(ridx, cidx);
+        column_data.push_back(value);
+    }
+
+    return column_data;
+}
+
+template <typename CTX_T>
+std::vector<t_tscalar>
+t_data_slice<CTX_T>::get_row_path(t_uindex ridx) const {
+    return m_ctx->unity_get_row_path(ridx);
 }
 
 template <typename CTX_T>
 t_uindex
-t_data_slice<CTX_T>::get_slice_idx(t_uindex ridx, t_uindex cidx) const {
-    t_uindex idx = (ridx - m_start_row) * m_stride + (cidx - m_start_col);
-    return idx;
+t_data_slice<CTX_T>::num_rows() const {
+    return m_end_row - m_start_row;
 }
 
 // Getters
@@ -102,13 +109,13 @@ t_data_slice<CTX_T>::get_context() const {
 }
 
 template <typename CTX_T>
-std::shared_ptr<std::vector<t_tscalar>>
+const std::vector<t_tscalar>&
 t_data_slice<CTX_T>::get_slice() const {
     return m_slice;
 }
 
 template <typename CTX_T>
-const std::vector<std::string>&
+const std::vector<std::vector<t_tscalar>>&
 t_data_slice<CTX_T>::get_column_names() const {
     return m_column_names;
 }
@@ -139,6 +146,18 @@ t_data_slice<CTX_T>::get_stride() const {
 }
 
 template <typename CTX_T>
+t_uindex
+t_data_slice<CTX_T>::get_row_offset() const {
+    return m_row_offset;
+}
+
+template <typename CTX_T>
+t_uindex
+t_data_slice<CTX_T>::get_col_offset() const {
+    return m_col_offset;
+}
+
+template <typename CTX_T>
 t_get_data_extents
 t_data_slice<CTX_T>::get_data_extents() const {
     auto nrows = m_ctx->get_row_count();
@@ -146,6 +165,14 @@ t_data_slice<CTX_T>::get_data_extents() const {
     t_get_data_extents ext = sanitize_get_data_extents(
         nrows, ncols, m_start_row, m_end_row, m_start_col, m_end_col);
     return ext;
+}
+
+// Private
+template <typename CTX_T>
+t_uindex
+t_data_slice<CTX_T>::get_slice_idx(t_uindex ridx, t_uindex cidx) const {
+    t_uindex idx = (ridx - m_start_row) * m_stride + (cidx - m_start_col);
+    return idx;
 }
 
 // Explicitly instantiate data slice for each context

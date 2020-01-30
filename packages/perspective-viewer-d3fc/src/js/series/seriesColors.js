@@ -12,7 +12,9 @@ import {groupFromKey} from "./seriesKey";
 export function seriesColors(settings) {
     const col = settings.data && settings.data.length > 0 ? settings.data[0] : {};
     const domain = Object.keys(col).filter(k => k !== "__ROW_PATH__");
-    return fromDomain(domain);
+    return colorScale()
+        .settings(settings)
+        .domain(domain)();
 }
 
 export function seriesColorsFromGroups(settings) {
@@ -26,22 +28,74 @@ export function seriesColorsFromGroups(settings) {
             }
         }
     });
-    return fromDomain(domain);
+    return colorScale()
+        .settings(settings)
+        .domain(domain)();
 }
 
-function fromDomain(domain) {
-    return domain.length > 1 ? d3.scaleOrdinal(d3.schemeCategory10.map(withOpacity)).domain(domain) : null;
+export function colorScale() {
+    let domain = null;
+    let defaultColors = null;
+    let settings = {};
+    let mapFunction = d => withOpacity(d, settings.colorStyles && settings.colorStyles.opacity);
+
+    const colors = () => {
+        const styles = settings.colorStyles;
+        const defaults = defaultColors || [styles.series];
+        if (defaults || domain.length > 1) {
+            const range = domain.length > 1 ? styles.scheme : defaults;
+            return d3.scaleOrdinal(range.map(mapFunction)).domain(domain);
+        }
+        return null;
+    };
+
+    colors.domain = (...args) => {
+        if (!args.length) {
+            return domain;
+        }
+        domain = args[0];
+        return colors;
+    };
+
+    colors.defaultColors = (...args) => {
+        if (!args.length) {
+            return defaultColors;
+        }
+        defaultColors = args[0];
+        return colors;
+    };
+
+    colors.mapFunction = (...args) => {
+        if (!args.length) {
+            return mapFunction;
+        }
+        mapFunction = args[0];
+        return colors;
+    };
+
+    colors.settings = (...args) => {
+        if (!args.length) {
+            return settings;
+        }
+        settings = args[0];
+        return colors;
+    };
+
+    return colors;
 }
 
 export function withoutOpacity(color) {
-    const lastComma = color.lastIndexOf(",");
-    const valueIndex = color.indexOf("(");
-    return valueIndex !== -1 && lastComma !== -1 ? `rgb(${color.substring(valueIndex + 1, lastComma)})` : color;
+    return setOpacity(1)(color);
 }
 
-export function withOpacity(color) {
-    if (color.includes("rgb")) return color;
+export function withOpacity(color, opacity = 0.5) {
+    return setOpacity(opacity)(color);
+}
 
-    const toInt = offset => parseInt(color.substring(offset, offset + 2), 16);
-    return `rgba(${toInt(1)},${toInt(3)},${toInt(5)},0.5)`;
+export function setOpacity(opacity) {
+    return color => {
+        const decoded = d3.color(color);
+        decoded.opacity = opacity;
+        return decoded + "";
+    };
 }
